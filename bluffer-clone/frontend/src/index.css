@@ -1,0 +1,43 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  padding: 24px;
+}
+
+input,
+button {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+fieldset {
+  border: 1px solid #ccc;
+  padding: 16px;
+  margin: 0 0 16px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+small {
+  color: #555;
+}
