@@ -4,34 +4,55 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
 
+
 class GamePhase(str, Enum):
     WAITING_FOR_PLAYERS = "WAITING_FOR_PLAYERS"
     DEALING = "DEALING"
     PLAYER_TURN = "PLAYER_TURN"
     CLAIM_MADE = "CLAIM_MADE"
-    CHALLENGE = "CHALLENGE"
-    RESOLUTION = "RESOLUTION"
     GAME_OVER = "GAME_OVER"
+
+
+class TurnDirection(str, Enum):
+    CLOCKWISE = "CLOCKWISE"
+    COUNTERCLOCKWISE = "COUNTERCLOCKWISE"
+
+
+RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+SUITS = ["S", "H", "D", "C"]
+
+
+@dataclass(frozen=True)
+class Card:
+    rank: str
+    suit: str
+    deck: int
+
+    def code(self) -> str:
+        return f"{self.rank}{self.suit}"
+
 
 @dataclass
 class Player:
     player_id: str
     display_name: str
-    hand: List[int] = field(default_factory=list)
+    hand: List[Card] = field(default_factory=list)
 
 
 @dataclass
 class Claim:
     player_id: str
-    quantity: int
-    face: int
+    rank: str
+    count: int
 
 
 @dataclass
 class ChallengeOutcome:
-    winner_id: str
-    claim_truthful: bool
-    matching_count: int
+    claimant_id: str
+    challenger_id: str
+    penalty_player_id: str
+    picked_card: Card
+    picked_matches_claim: bool
 
 
 @dataclass
@@ -40,16 +61,19 @@ class GameState:
     players: Dict[str, Player] = field(default_factory=dict)
     turn_order: List[str] = field(default_factory=list)
     current_turn_index: int = 0
+    direction: TurnDirection = TurnDirection.CLOCKWISE
     last_claim: Optional[Claim] = None
-    last_challenger_id: Optional[str] = None
-    resolution_winner_id: Optional[str] = None
-    last_claim_truthful: Optional[bool] = None
-    last_matching_count: Optional[int] = None
+    last_played_cards: List[Card] = field(default_factory=list)
+    pile: List[Card] = field(default_factory=list)
+    finished_order: List[str] = field(default_factory=list)
 
     def _require_phase(self, *allowed: GamePhase) -> None:
         if self.phase not in allowed:
             allowed_names = ", ".join(p.value for p in allowed)
             raise ValueError(f"invalid phase {self.phase.value}; expected {allowed_names}")
+
+    def _direction_step(self) -> int:
+        return 1 if self.direction == TurnDirection.CLOCKWISE else -1
 
     def add_player(self, player: Player) -> None:
         self._require_phase(GamePhase.WAITING_FOR_PLAYERS)
@@ -57,7 +81,7 @@ class GameState:
             raise ValueError(f"player {player.player_id} already exists")
         self.players[player.player_id] = player
 
-    def start_game(self, turn_order: List[str]) -> None:
+    def start_game(self, turn_order: List[str], direction: TurnDirection) -> None:
         self._require_phase(GamePhase.WAITING_FOR_PLAYERS)
         if len(turn_order) < 2:
             raise ValueError("need at least two players to start")
@@ -66,9 +90,10 @@ class GameState:
             raise ValueError(f"unknown players in turn order: {missing}")
         self.turn_order = list(turn_order)
         self.current_turn_index = 0
+        self.direction = direction
         self.phase = GamePhase.DEALING
 
-    def set_dealt_hands(self, hands: Dict[str, List[int]]) -> None:
+    def set_dealt_hands(self, hands: Dict[str, List[Card]]) -> None:
         self._require_phase(GamePhase.DEALING)
         for player_id in self.turn_order:
             if player_id not in hands:
@@ -77,112 +102,111 @@ class GameState:
         self.phase = GamePhase.PLAYER_TURN
 
     def current_player_id(self) -> str:
-        self._require_phase(GamePhase.PLAYER_TURN)
+        if self.phase not in {GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE}:
+            raise ValueError(f"no active player in phase {self.phase.value}")
         return self.turn_order[self.current_turn_index]
 
-    def current_actor_id(self) -> str:
-        if self.phase == GamePhase.PLAYER_TURN:
-            return self.turn_order[self.current_turn_index]
-        if self.phase == GamePhase.CLAIM_MADE:
-            return self.turn_order[self.current_turn_index]
-        raise ValueError(f"no active actor in phase {self.phase.value}")
-
-    def make_claim(self, player_id: str, quantity: int, face: int) -> None:
-        self._require_phase(GamePhase.PLAYER_TURN)
+    def play_cards(self, player_id: str, card_indices: List[int], claim_rank: str) -> None:
+        self._require_phase(GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE)
         if player_id != self.current_player_id():
-            raise ValueError("claim made out of turn")
-        self._validate_claim_values(quantity, face)
-        self.last_claim = Claim(player_id=player_id, quantity=quantity, face=face)
-        self.last_challenger_id = None
-        self.resolution_winner_id = None
-        self.last_claim_truthful = None
-        self.last_matching_count = None
+            raise ValueError("play made out of turn")
+        if claim_rank not in RANKS:
+            raise ValueError("invalid claim rank")
+        if not card_indices:
+            raise ValueError("must play at least one card")
+        hand = self.players[player_id].hand
+        max_index = len(hand) - 1
+        if any(index < 0 or index > max_index for index in card_indices):
+            raise ValueError("card index out of range")
+        if len(set(card_indices)) != len(card_indices):
+            raise ValueError("duplicate card indices")
+
+        played_cards: List[Card] = []
+        for index in sorted(card_indices, reverse=True):
+            played_cards.append(hand.pop(index))
+        played_cards.reverse()
+
+        self.last_played_cards = played_cards
+        self.pile.extend(played_cards)
+        self.last_claim = Claim(player_id=player_id, rank=claim_rank, count=len(played_cards))
         self.phase = GamePhase.CLAIM_MADE
+        self._update_finished()
         self._advance_turn()
 
-    def raise_claim(self, player_id: str, quantity: int, face: int) -> None:
-        self._require_phase(GamePhase.CLAIM_MADE)
-        if self.last_claim is None:
-            raise ValueError("no prior claim to raise")
-        if player_id != self.current_actor_id():
-            raise ValueError("raise made out of turn")
-        self._validate_claim_values(quantity, face)
-        if not self._is_higher_claim(quantity, face, self.last_claim):
-            raise ValueError("raised claim must be higher than previous claim")
-        self.last_claim = Claim(player_id=player_id, quantity=quantity, face=face)
-        self.last_challenger_id = None
-        self.resolution_winner_id = None
-        self.last_claim_truthful = None
-        self.last_matching_count = None
-        self.phase = GamePhase.CLAIM_MADE
+    def pass_turn(self, player_id: str) -> bool:
+        self._require_phase(GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE)
+        if player_id != self.current_player_id():
+            raise ValueError("pass made out of turn")
+        discarded = False
+        if self.phase == GamePhase.CLAIM_MADE and self.last_claim:
+            if player_id == self.last_claim.player_id:
+                self._discard_pile()
+                discarded = True
+        self._update_finished()
         self._advance_turn()
+        return discarded
 
-    def call_bluff(self, challenger_id: str) -> None:
+    def call_bluff(self, challenger_id: str, pick_index: int) -> ChallengeOutcome:
         self._require_phase(GamePhase.CLAIM_MADE)
+        if challenger_id != self.current_player_id():
+            raise ValueError("challenge made out of turn")
         if self.last_claim is None:
             raise ValueError("no claim to challenge")
-        if challenger_id != self.current_actor_id():
-            raise ValueError("challenge made out of turn")
         if challenger_id == self.last_claim.player_id:
             raise ValueError("claimer cannot challenge own claim")
         if challenger_id not in self.players:
             raise ValueError("unknown challenger")
-        self.last_challenger_id = challenger_id
-        self.phase = GamePhase.CHALLENGE
+        if not self.last_played_cards:
+            raise ValueError("no cards to challenge")
+        if pick_index < 0 or pick_index >= len(self.last_played_cards):
+            raise ValueError("picked card index out of range")
 
-    def resolve_challenge(self) -> ChallengeOutcome:
-        self._require_phase(GamePhase.CHALLENGE)
-        if self.last_claim is None or self.last_challenger_id is None:
-            raise ValueError("challenge missing claim or challenger")
-        matching_count = self._count_face(self.last_claim.face)
-        claim_truthful = matching_count >= self.last_claim.quantity
-        if claim_truthful:
-            winner_id = self.last_claim.player_id
+        picked_card = self.last_played_cards[pick_index]
+        picked_matches = picked_card.rank == self.last_claim.rank
+        if picked_matches:
+            penalty_player_id = challenger_id
         else:
-            winner_id = self.last_challenger_id
-        self.resolution_winner_id = winner_id
-        self.last_claim_truthful = claim_truthful
-        self.last_matching_count = matching_count
-        self.phase = GamePhase.RESOLUTION
-        return ChallengeOutcome(
-            winner_id=winner_id,
-            claim_truthful=claim_truthful,
-            matching_count=matching_count,
-        )
+            penalty_player_id = self.last_claim.player_id
 
-    def advance_after_resolution(self, game_over: bool = False) -> None:
-        self._require_phase(GamePhase.RESOLUTION)
-        if game_over:
-            self.phase = GamePhase.GAME_OVER
-            return
+        self.players[penalty_player_id].hand.extend(self.pile)
+        outcome = ChallengeOutcome(
+            claimant_id=self.last_claim.player_id,
+            challenger_id=challenger_id,
+            penalty_player_id=penalty_player_id,
+            picked_card=picked_card,
+            picked_matches_claim=picked_matches,
+        )
+        self._discard_pile()
+        self._update_finished()
         self._advance_turn()
-        self.phase = GamePhase.PLAYER_TURN
+        return outcome
+
+    def _discard_pile(self) -> None:
+        self.pile = []
         self.last_claim = None
-        self.last_challenger_id = None
-        self.resolution_winner_id = None
-        self.last_claim_truthful = None
-        self.last_matching_count = None
+        self.last_played_cards = []
+        self.phase = GamePhase.PLAYER_TURN
 
     def _advance_turn(self) -> None:
         if not self.turn_order:
             raise ValueError("turn order not set")
-        self.current_turn_index = (self.current_turn_index + 1) % len(self.turn_order)
+        if self.phase == GamePhase.GAME_OVER:
+            return
+        step = self._direction_step()
+        for _ in range(len(self.turn_order)):
+            self.current_turn_index = (self.current_turn_index + step) % len(self.turn_order)
+            player_id = self.turn_order[self.current_turn_index]
+            if player_id not in self.finished_order:
+                return
+        self.phase = GamePhase.GAME_OVER
 
-    def _validate_claim_values(self, quantity: int, face: int) -> None:
-        if quantity <= 0:
-            raise ValueError("claim quantity must be positive")
-        if face < 1 or face > 6:
-            raise ValueError("claim face must be between 1 and 6")
-
-    def _is_higher_claim(self, quantity: int, face: int, previous: Claim) -> bool:
-        if quantity > previous.quantity:
-            return True
-        if quantity == previous.quantity and face > previous.face:
-            return True
-        return False
-
-    def _count_face(self, face: int) -> int:
-        total = 0
-        for player in self.players.values():
-            total += sum(1 for die in player.hand if die == face)
-        return total
+    def _update_finished(self) -> None:
+        for player_id in self.turn_order:
+            if player_id in self.finished_order:
+                continue
+            if not self.players[player_id].hand:
+                if self.last_claim and self.last_claim.player_id == player_id:
+                    continue
+                self.finished_order.append(player_id)
+        if len(self.finished_order) == len(self.turn_order):
+            self.phase = GamePhase.GAME_OVER

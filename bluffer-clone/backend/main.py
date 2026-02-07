@@ -7,13 +7,13 @@ from typing import Dict, Set
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from game_engine import GamePhase
-from rooms import JoinStatus, Room, RoomManager
+from .game_engine import GamePhase, TurnDirection
+from .rooms import JoinStatus, Room, RoomManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bluffer.backend")
 
-app = FastAPI(title="Bluffer Clone Backend")
+app = FastAPI(title="Bluffer Backend")
 
 
 @dataclass
@@ -58,12 +58,27 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             if message_type == "create_room":
                 player_id = payload.get("player_id")
                 display_name = payload.get("display_name")
+                deck_count = payload.get("deck_count", 1)
+                direction_value = payload.get("direction", TurnDirection.CLOCKWISE.value)
                 if not player_id or not display_name:
                     await websocket.send_json(
                         {"type": "error", "message": "player_id and display_name required"}
                     )
                     continue
-                room = room_manager.create_room(player_id, display_name)
+                try:
+                    direction = TurnDirection(direction_value)
+                except ValueError:
+                    await websocket.send_json(
+                        {"type": "error", "message": "invalid direction"}
+                    )
+                    continue
+                try:
+                    room = room_manager.create_room(
+                        player_id, display_name, int(deck_count), direction
+                    )
+                except ValueError as exc:
+                    await websocket.send_json({"type": "error", "message": str(exc)})
+                    continue
                 room_connections.setdefault(room.code, set()).add(websocket)
                 connection_rooms[websocket] = room.code
                 connection_players[websocket] = player_id
@@ -91,9 +106,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         }
                     )
                     continue
-                status, room, started_now = room_manager.join_room(
-                    room_code, player_id, display_name
-                )
+                status, room = room_manager.join_room(room_code, player_id, display_name)
                 if status == JoinStatus.NOT_FOUND:
                     await websocket.send_json(
                         {"type": "room_not_found", "room_code": room_code}
@@ -127,18 +140,36 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 )
                 await _send_public_state(room_code)
                 await _send_private_state(room_code)
-                if started_now:
-                    await _broadcast_room(
-                        room_code,
-                        {
-                            "type": "game_started",
-                            "room_code": room_code,
-                            "phase": room.game_state.phase.value,
-                        },
-                    )
                 continue
 
-            if message_type in {"make_claim", "raise_claim", "call_bluff"}:
+            if message_type == "start_game":
+                room_code = payload.get("room_code")
+                player_id = payload.get("player_id")
+                if not room_code or not player_id:
+                    await websocket.send_json(
+                        {"type": "error", "message": "room_code and player_id required"}
+                    )
+                    continue
+                try:
+                    room = room_manager.start_game(room_code, player_id)
+                except ValueError as exc:
+                    await websocket.send_json(
+                        {"type": "invalid_action", "message": str(exc)}
+                    )
+                    continue
+                await _broadcast_room(
+                    room_code,
+                    {
+                        "type": "game_started",
+                        "room_code": room_code,
+                        "phase": room.game_state.phase.value,
+                    },
+                )
+                await _send_public_state(room_code)
+                await _send_private_state(room_code)
+                continue
+
+            if message_type in {"play_cards", "pass_turn", "call_bluff"}:
                 room_code = payload.get("room_code")
                 player_id = payload.get("player_id")
                 if not room_code or not player_id:
@@ -158,33 +189,42 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     )
                     continue
                 try:
-                    if message_type == "make_claim":
-                        quantity = int(payload.get("quantity", 0))
-                        face = int(payload.get("face", 0))
-                        room.game_state.make_claim(player_id, quantity, face)
-                    elif message_type == "raise_claim":
-                        quantity = int(payload.get("quantity", 0))
-                        face = int(payload.get("face", 0))
-                        room.game_state.raise_claim(player_id, quantity, face)
+                    if message_type == "play_cards":
+                        card_indices = payload.get("card_indices", [])
+                        claim_rank = payload.get("claim_rank")
+                        if not isinstance(card_indices, list) or claim_rank is None:
+                            raise ValueError("card_indices and claim_rank required")
+                        room.game_state.play_cards(
+                            player_id, [int(index) for index in card_indices], str(claim_rank)
+                        )
+                    elif message_type == "pass_turn":
+                        discarded = room.game_state.pass_turn(player_id)
+                        if discarded:
+                            await _broadcast_room(
+                                room_code,
+                                {
+                                    "type": "pile_discarded",
+                                    "room_code": room_code,
+                                    "player_id": player_id,
+                                },
+                            )
                     else:
-                        room.game_state.call_bluff(player_id)
-                        outcome = room.game_state.resolve_challenge()
+                        pick_index = payload.get("pick_index")
+                        if pick_index is None:
+                            raise ValueError("pick_index required")
+                        outcome = room.game_state.call_bluff(player_id, int(pick_index))
                         await _broadcast_room(
                             room_code,
                             {
                                 "type": "challenge_resolved",
                                 "room_code": room_code,
-                                "winner_id": outcome.winner_id,
-                                "claim_truthful": outcome.claim_truthful,
-                                "matching_count": outcome.matching_count,
-                                "claim": {
-                                    "player_id": room.game_state.last_claim.player_id,
-                                    "quantity": room.game_state.last_claim.quantity,
-                                    "face": room.game_state.last_claim.face,
-                                },
+                                "claimant_id": outcome.claimant_id,
+                                "challenger_id": outcome.challenger_id,
+                                "penalty_player_id": outcome.penalty_player_id,
+                                "picked_card": outcome.picked_card.code(),
+                                "picked_matches_claim": outcome.picked_matches_claim,
                             },
                         )
-                        room.game_state.advance_after_resolution()
                 except ValueError as exc:
                     await websocket.send_json(
                         {"type": "invalid_action", "message": str(exc)}
@@ -232,7 +272,11 @@ async def _send_private_state(room_code: str) -> None:
         await socket.send_json(
             {
                 "type": "private_state",
-                "state": {"room_code": room.code, "player_id": player_id, "hand": player.hand},
+                "state": {
+                    "room_code": room.code,
+                    "player_id": player_id,
+                    "hand": [card.code() for card in player.hand],
+                },
             }
         )
 
@@ -242,8 +286,8 @@ def _public_state(room: Room) -> dict:
     if room.game_state.last_claim is not None:
         last_claim = {
             "player_id": room.game_state.last_claim.player_id,
-            "quantity": room.game_state.last_claim.quantity,
-            "face": room.game_state.last_claim.face,
+            "rank": room.game_state.last_claim.rank,
+            "count": room.game_state.last_claim.count,
         }
     current_player_id = None
     if room.game_state.phase in {GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE}:
@@ -251,12 +295,20 @@ def _public_state(room: Room) -> dict:
     return {
         "room_code": room.code,
         "phase": room.game_state.phase.value,
+        "host_id": room.host_id,
+        "deck_count": room.deck_count,
+        "direction": room.direction.value,
         "players": [
-            {"player_id": player.player_id, "display_name": player.display_name}
+            {
+                "player_id": player.player_id,
+                "display_name": player.display_name,
+                "hand_count": len(player.hand),
+            }
             for player in room.players.values()
         ],
         "current_player_id": current_player_id,
         "last_claim": last_claim,
-        "last_challenger_id": room.game_state.last_challenger_id,
-        "resolution_winner_id": room.game_state.resolution_winner_id,
+        "last_play_count": len(room.game_state.last_played_cards),
+        "pile_count": len(room.game_state.pile),
+        "finished_order": list(room.game_state.finished_order),
     }

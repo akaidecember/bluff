@@ -1,26 +1,31 @@
 export type PlayerSummary = {
   player_id: string;
   display_name: string;
+  hand_count: number;
 };
 
 export type PublicState = {
   room_code: string;
   phase: string;
+  host_id: string;
+  deck_count: number;
+  direction: string;
   players: PlayerSummary[];
   current_player_id: string | null;
   last_claim: {
     player_id: string;
-    quantity: number;
-    face: number;
+    rank: string;
+    count: number;
   } | null;
-  last_challenger_id: string | null;
-  resolution_winner_id: string | null;
+  last_play_count: number;
+  pile_count: number;
+  finished_order: string[];
 };
 
 export type PrivateState = {
   room_code: string;
   player_id: string;
-  hand: number[];
+  hand: string[];
 };
 
 export type ServerMessage =
@@ -36,34 +41,37 @@ export type ServerMessage =
   | {
       type: "challenge_resolved";
       room_code: string;
-      winner_id: string;
-      claim_truthful: boolean;
-      matching_count: number;
-      claim: { player_id: string; quantity: number; face: number };
+      claimant_id: string;
+      challenger_id: string;
+      penalty_player_id: string;
+      picked_card: string;
+      picked_matches_claim: boolean;
     }
+  | { type: "pile_discarded"; room_code: string; player_id: string }
   | { type: "invalid_action"; message: string }
   | { type: "error"; message: string };
 
 export type ClientMessage =
-  | { type: "create_room"; player_id: string; display_name: string }
+  | {
+      type: "create_room";
+      player_id: string;
+      display_name: string;
+      deck_count: number;
+      direction: string;
+    }
   | {
       type: "join_room";
       room_code: string;
       player_id: string;
       display_name: string;
     }
+  | { type: "start_game"; room_code: string; player_id: string }
   | {
-      type: "make_claim";
+      type: "play_cards";
       room_code: string;
       player_id: string;
-      quantity: number;
-      face: number;
+      card_indices: number[];
+      claim_rank: string;
     }
-  | {
-      type: "raise_claim";
-      room_code: string;
-      player_id: string;
-      quantity: number;
-      face: number;
-    }
-  | { type: "call_bluff"; room_code: string; player_id: string };
+  | { type: "pass_turn"; room_code: string; player_id: string }
+  | { type: "call_bluff"; room_code: string; player_id: string; pick_index: number };
