@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 340" role="img" aria-label="4C">
   <defs>
-    <linearGradient id="cardFace" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="face" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#eef3ff"/>
+      <stop offset="100%" stop-color="#edf2ff"/>
     </linearGradient>
   </defs>
-  <rect x="5" y="5" width="230" height="330" rx="22" fill="url(#cardFace)" stroke="#22314f" stroke-width="5"/>
-  <text x="28" y="52" font-size="42" font-family="Trebuchet MS, sans-serif" fill="#18233b" font-weight="700">4</text>
-  <text x="28" y="88" font-size="28" font-family="Trebuchet MS, sans-serif" fill="#18233b">C</text>
-  <text x="120" y="190" text-anchor="middle" font-size="110" font-family="Trebuchet MS, sans-serif" fill="#18233b" font-weight="700">C</text>
-  <text x="212" y="316" text-anchor="end" font-size="42" font-family="Trebuchet MS, sans-serif" fill="#18233b" font-weight="700">4</text>
+  <rect x="5" y="5" width="230" height="330" rx="22" fill="url(#face)" stroke="#273758" stroke-width="5"/>
+  <text x="26" y="50" font-size="40" font-family="Trebuchet MS, sans-serif" fill="#1b2845" font-weight="700">4</text>
+  <text x="26" y="87" font-size="30" font-family="Trebuchet MS, sans-serif" fill="#1b2845" font-weight="700">♣</text>
+  <text x="120" y="202" text-anchor="middle" font-size="126" font-family="Trebuchet MS, sans-serif" fill="#1b2845" font-weight="700">♣</text>
+  <text x="214" y="318" text-anchor="end" font-size="40" font-family="Trebuchet MS, sans-serif" fill="#1b2845" font-weight="700">4</text>
 </svg>

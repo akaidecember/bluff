@@ -22,6 +22,8 @@ export type PublicState = {
   last_play_count: number;
   pile_count: number;
   finished_order: string[];
+  loser_id: string | null;
+  standings: string[];
 };
 
 export type PrivateState = {

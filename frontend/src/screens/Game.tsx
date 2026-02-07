@@ -32,6 +32,7 @@ export default function Game({
   const lastClaim = publicState?.last_claim ?? null;
   const hand = privateState?.hand ?? [];
   const activeRoundRank = publicState?.round_rank ?? null;
+  const pickMax = Math.max(publicState?.last_play_count ?? 1, 1);
 
   const canPlay = isMyTurn && (phase === "PLAYER_TURN" || phase === "CLAIM_MADE");
   const canPass = isMyTurn && (phase === "PLAYER_TURN" || phase === "CLAIM_MADE");
@@ -39,7 +40,6 @@ export default function Game({
     isMyTurn && phase === "CLAIM_MADE" && lastClaim !== null && lastClaim.player_id !== playerId;
 
   const effectiveClaimRank = activeRoundRank ?? claimRank;
-  const pickMax = Math.max(publicState?.last_play_count ?? 1, 1);
 
   const playerNameById = useMemo(() => {
     const mapping: Record<string, string> = {};
@@ -48,6 +48,10 @@ export default function Game({
     }
     return mapping;
   }, [publicState?.players]);
+
+  const standings = publicState?.standings ?? [];
+  const placing = standings.findIndex((player) => player === playerId) + 1;
+  const isLoser = publicState?.loser_id === playerId;
 
   useEffect(() => {
     if (activeRoundRank) {
@@ -58,6 +62,12 @@ export default function Game({
   useEffect(() => {
     setSelectedIndices((previous) => previous.filter((index) => index < hand.length));
   }, [hand.length]);
+
+  useEffect(() => {
+    if (pickIndex > pickMax - 1) {
+      setPickIndex(Math.max(0, pickMax - 1));
+    }
+  }, [pickIndex, pickMax]);
 
   const playCards = () => {
     const card_indices = [...selectedIndices].sort((a, b) => a - b);
@@ -138,6 +148,29 @@ export default function Game({
       return [...previous, index];
     });
   };
+
+  if (phase === "GAME_OVER") {
+    return (
+      <main className="screen game-screen">
+        <section className="panel result-panel">
+          <h1>{isLoser ? "You Lose" : "You Win"}</h1>
+          {placing > 0 && <p>Your final place: #{placing}</p>}
+          <h2>Standings</h2>
+          <ol className="standings-list">
+            {standings.map((playerIdInRank, index) => {
+              const playerName = playerNameById[playerIdInRank] ?? playerIdInRank;
+              const isLast = index === standings.length - 1;
+              return (
+                <li key={playerIdInRank} className={isLast ? "loser" : "winner"}>
+                  #{index + 1} {playerName} {isLast ? "(Lose)" : "(Win)"}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="screen game-screen">
@@ -242,23 +275,20 @@ export default function Game({
           </div>
 
           <div className="control-group">
-            <label htmlFor="pick-index">Bluff Pick (1-{pickMax})</label>
-            <input
-              id="pick-index"
-              type="number"
-              min={1}
-              max={pickMax}
-              value={Math.min(pickIndex + 1, pickMax)}
-              onChange={(event) => {
-                const rawValue = Number(event.target.value);
-                if (Number.isNaN(rawValue)) {
-                  setPickIndex(0);
-                  return;
-                }
-                const clamped = Math.max(1, Math.min(pickMax, rawValue));
-                setPickIndex(clamped - 1);
-              }}
-            />
+            <label>Bluff Pick</label>
+            <div className="pick-grid" role="radiogroup" aria-label="Pick a facedown card to challenge">
+              {Array.from({ length: pickMax }, (_, index) => (
+                <PlayingCard
+                  key={`pick-${index}`}
+                  faceDown
+                  selected={pickIndex === index}
+                  disabled={!canCallBluff}
+                  className="pick-card"
+                  title={`Pick card ${index + 1}`}
+                  onClick={() => setPickIndex(index)}
+                />
+              ))}
+            </div>
           </div>
         </div>
 

@@ -313,4 +313,6 @@ def _public_state(room: Room) -> dict:
         "last_play_count": len(room.game_state.last_played_cards),
         "pile_count": len(room.game_state.pile),
         "finished_order": list(room.game_state.finished_order),
+        "loser_id": room.game_state.loser_id,
+        "standings": room.game_state.standings(),
     }

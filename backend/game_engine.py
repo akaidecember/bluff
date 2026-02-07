@@ -71,6 +71,7 @@ class GameState:
     last_played_cards: List[Card] = field(default_factory=list)
     pile: List[Card] = field(default_factory=list)
     finished_order: List[str] = field(default_factory=list)
+    loser_id: Optional[str] = None
     round_rank: Optional[str] = None
     round_starter_id: Optional[str] = None
 
@@ -235,8 +236,27 @@ class GameState:
                 if self.last_claim and self.last_claim.player_id == player_id:
                     continue
                 self.finished_order.append(player_id)
-        if len(self.finished_order) == len(self.turn_order):
+        if self.phase == GamePhase.CLAIM_MADE and self.last_claim is not None:
+            claimant = self.last_claim.player_id
+            if not self.players[claimant].hand:
+                return
+        remaining_with_cards = [
+            player_id
+            for player_id in self.turn_order
+            if player_id not in self.finished_order and self.players[player_id].hand
+        ]
+        if len(remaining_with_cards) == 1:
+            self.loser_id = remaining_with_cards[0]
             self.phase = GamePhase.GAME_OVER
+        elif len(remaining_with_cards) == 0:
+            self.loser_id = None
+            self.phase = GamePhase.GAME_OVER
+
+    def standings(self) -> List[str]:
+        results = list(self.finished_order)
+        if self.loser_id is not None:
+            results.append(self.loser_id)
+        return results
 
 
 def sort_cards(cards: List[Card]) -> List[Card]:

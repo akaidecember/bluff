@@ -300,6 +300,48 @@ button.danger {
   gap: 0.35rem;
 }
 
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 0.5rem;
+}
+
+.pick-card {
+  max-width: 88px;
+}
+
+.result-panel {
+  grid-column: span 12;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.standings-list {
+  margin: 1rem auto 0;
+  padding: 0;
+  list-style-position: inside;
+  width: min(460px, 100%);
+  text-align: left;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.standings-list li {
+  border: 1px solid #d2dff8;
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+}
+
+.standings-list li.winner {
+  background: #effbf4;
+  border-color: #8dc6a8;
+}
+
+.standings-list li.loser {
+  background: #fff2f5;
+  border-color: #f2bfd1;
+}
+
 @media (max-width: 920px) {
   .form-panel,
   .players-panel,
