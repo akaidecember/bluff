@@ -21,6 +21,7 @@ export type PublicState = {
   round_starter_id: string | null;
   last_play_count: number;
   pile_count: number;
+  discard_pile_count: number;
   finished_order: string[];
   loser_id: string | null;
   standings: string[];

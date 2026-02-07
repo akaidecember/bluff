@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 export type PlayingCardProps = {
   code?: string;
   faceDown?: boolean;
@@ -5,6 +7,7 @@ export type PlayingCardProps = {
   disabled?: boolean;
   className?: string;
   title?: string;
+  style?: CSSProperties;
   onClick?: () => void;
 };
 
@@ -15,6 +18,7 @@ export default function PlayingCard({
   disabled = false,
   className = "",
   title,
+  style,
   onClick,
 }: PlayingCardProps) {
   const safeCode = code ?? "";
@@ -29,6 +33,7 @@ export default function PlayingCard({
       aria-pressed={selected}
       aria-label={label}
       title={title}
+      style={style}
     >
       <img src={src} alt={faceDown ? "Card back" : safeCode} loading="lazy" draggable={false} />
     </button>

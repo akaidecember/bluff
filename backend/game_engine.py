@@ -70,6 +70,7 @@ class GameState:
     last_claim: Optional[Claim] = None
     last_played_cards: List[Card] = field(default_factory=list)
     pile: List[Card] = field(default_factory=list)
+    discard_pile: List[Card] = field(default_factory=list)
     finished_order: List[str] = field(default_factory=list)
     loser_id: Optional[str] = None
     round_rank: Optional[str] = None
@@ -157,7 +158,7 @@ class GameState:
 
         discarded = False
         if self.phase == GamePhase.CLAIM_MADE and self.round_starter_id == player_id:
-            self._discard_pile()
+            self._clear_round(discard=True)
             discarded = True
 
         self._update_finished()
@@ -199,12 +200,14 @@ class GameState:
             picked_matches_claim=picked_matches,
         )
 
-        self._discard_pile()
+        self._clear_round(discard=False)
         self._update_finished()
         self._advance_turn()
         return outcome
 
-    def _discard_pile(self) -> None:
+    def _clear_round(self, discard: bool) -> None:
+        if discard and self.pile:
+            self.discard_pile.extend(self.pile)
         self.pile = []
         self.last_claim = None
         self.last_played_cards = []
