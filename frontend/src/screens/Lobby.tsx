@@ -59,72 +59,103 @@ export default function Lobby({
     publicState.players.length >= 2;
 
   return (
-    <main>
-      <h1>Bluffer Lobby</h1>
-      <fieldset>
-        <legend>Identity</legend>
-        <label>
-          Player ID
+    <main className="screen lobby-screen">
+      <section className="panel hero-panel">
+        <h1>Bluffer Lobby</h1>
+        <p>Host picks deck count and direction. Game supports 2 to 6 players.</p>
+      </section>
+
+      <section className="panel form-panel">
+        <h2>Identity</h2>
+        <div className="field-grid">
+          <label htmlFor="player-id">Player ID</label>
           <input
+            id="player-id"
             value={playerId}
             onChange={(event) => onChangePlayerId(event.target.value)}
             placeholder="player-1"
           />
-        </label>
-        <label>
-          Display Name
+          <label htmlFor="display-name">Display Name</label>
           <input
+            id="display-name"
             value={displayName}
             onChange={(event) => onChangeDisplayName(event.target.value)}
             placeholder="Your name"
           />
-        </label>
-      </fieldset>
+        </div>
+      </section>
 
-      <fieldset>
-        <legend>Room</legend>
-        <label>
-          Room Code
+      <section className="panel form-panel">
+        <h2>Room Controls</h2>
+        <div className="field-grid">
+          <label htmlFor="room-code">Room Code</label>
           <input
+            id="room-code"
             value={roomCode}
             onChange={(event) => onChangeRoomCode(event.target.value)}
             placeholder="ABCDE"
           />
-        </label>
-        <label>
-          Decks
-          <select value={deckCount} onChange={(event) => onChangeDeckCount(Number(event.target.value))}>
-            <option value={1}>1 Deck</option>
-            <option value={2}>2 Decks</option>
+
+          <label htmlFor="deck-count">Decks</label>
+          <select id="deck-count" value={deckCount} onChange={(event) => onChangeDeckCount(Number(event.target.value))}>
+            <option value={1}>1 deck (54 cards incl. jokers)</option>
+            <option value={2}>2 decks (108 cards incl. jokers)</option>
           </select>
-        </label>
-        <label>
-          Direction
-          <select value={direction} onChange={(event) => onChangeDirection(event.target.value)}>
+
+          <label htmlFor="turn-direction">Direction</label>
+          <select id="turn-direction" value={direction} onChange={(event) => onChangeDirection(event.target.value)}>
             <option value="CLOCKWISE">Clockwise</option>
             <option value="COUNTERCLOCKWISE">Counterclockwise</option>
           </select>
-        </label>
-        <div>
-          <button type="button" onClick={createRoom}>
+        </div>
+
+        <div className="button-row">
+          <button type="button" className="primary" onClick={createRoom}>
             Create Room
           </button>
-          <button type="button" onClick={joinRoom}>
+          <button type="button" className="secondary" onClick={joinRoom}>
             Join Room
           </button>
         </div>
-      </fieldset>
+      </section>
 
       {publicState && (
-        <section>
+        <section className="panel snapshot-panel">
           <h2>Room Snapshot</h2>
-          <p>Room: {publicState.room_code}</p>
-          <p>Phase: {publicState.phase}</p>
-          <p>Players: {publicState.players.length}</p>
-          <p>Decks: {publicState.deck_count}</p>
-          <p>Direction: {publicState.direction}</p>
+          <div className="status-grid">
+            <p>
+              <span>Room</span>
+              <strong>{publicState.room_code}</strong>
+            </p>
+            <p>
+              <span>Phase</span>
+              <strong>{publicState.phase}</strong>
+            </p>
+            <p>
+              <span>Players</span>
+              <strong>{publicState.players.length}</strong>
+            </p>
+            <p>
+              <span>Decks</span>
+              <strong>{publicState.deck_count}</strong>
+            </p>
+            <p>
+              <span>Direction</span>
+              <strong>{publicState.direction}</strong>
+            </p>
+          </div>
+
+          <div className="player-list compact">
+            {publicState.players.map((player) => (
+              <article key={player.player_id} className="player-pill">
+                <h3>{player.display_name}</h3>
+                <p>{player.player_id}</p>
+              </article>
+            ))}
+          </div>
+
           {publicState.host_id === playerId && (
-            <button type="button" onClick={startGame} disabled={!canStart}>
+            <button type="button" className="primary" onClick={startGame} disabled={!canStart}>
               Start Game
             </button>
           )}

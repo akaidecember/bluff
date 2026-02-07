@@ -20,6 +20,11 @@ class TurnDirection(str, Enum):
 
 RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 SUITS = ["S", "H", "D", "C"]
+JOKER_RANK = "JK"
+JOKER_VARIANTS = ["R", "B"]
+_SORT_RANKS = RANKS + [JOKER_RANK]
+_RANK_ORDER = {rank: index for index, rank in enumerate(_SORT_RANKS)}
+_SUIT_ORDER = {suit: index for index, suit in enumerate(["C", "D", "H", "S", "R", "B"])}
 
 
 @dataclass(frozen=True)
@@ -66,6 +71,8 @@ class GameState:
     last_played_cards: List[Card] = field(default_factory=list)
     pile: List[Card] = field(default_factory=list)
     finished_order: List[str] = field(default_factory=list)
+    round_rank: Optional[str] = None
+    round_starter_id: Optional[str] = None
 
     def _require_phase(self, *allowed: GamePhase) -> None:
         if self.phase not in allowed:
@@ -98,7 +105,7 @@ class GameState:
         for player_id in self.turn_order:
             if player_id not in hands:
                 raise ValueError(f"missing hand for player {player_id}")
-            self.players[player_id].hand = list(hands[player_id])
+            self.players[player_id].hand = sort_cards(hands[player_id])
         self.phase = GamePhase.PLAYER_TURN
 
     def current_player_id(self) -> str:
@@ -114,12 +121,20 @@ class GameState:
             raise ValueError("invalid claim rank")
         if not card_indices:
             raise ValueError("must play at least one card")
+
         hand = self.players[player_id].hand
         max_index = len(hand) - 1
         if any(index < 0 or index > max_index for index in card_indices):
             raise ValueError("card index out of range")
         if len(set(card_indices)) != len(card_indices):
             raise ValueError("duplicate card indices")
+
+        # The first claim of a round locks the rank for everyone until reset.
+        if self.last_claim is None:
+            self.round_rank = claim_rank
+            self.round_starter_id = player_id
+        elif claim_rank != self.round_rank:
+            raise ValueError(f"active round rank is {self.round_rank}; claim must match")
 
         played_cards: List[Card] = []
         for index in sorted(card_indices, reverse=True):
@@ -130,6 +145,7 @@ class GameState:
         self.pile.extend(played_cards)
         self.last_claim = Claim(player_id=player_id, rank=claim_rank, count=len(played_cards))
         self.phase = GamePhase.CLAIM_MADE
+
         self._update_finished()
         self._advance_turn()
 
@@ -137,11 +153,12 @@ class GameState:
         self._require_phase(GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE)
         if player_id != self.current_player_id():
             raise ValueError("pass made out of turn")
+
         discarded = False
-        if self.phase == GamePhase.CLAIM_MADE and self.last_claim:
-            if player_id == self.last_claim.player_id:
-                self._discard_pile()
-                discarded = True
+        if self.phase == GamePhase.CLAIM_MADE and self.round_starter_id == player_id:
+            self._discard_pile()
+            discarded = True
+
         self._update_finished()
         self._advance_turn()
         return discarded
@@ -162,13 +179,17 @@ class GameState:
             raise ValueError("picked card index out of range")
 
         picked_card = self.last_played_cards[pick_index]
-        picked_matches = picked_card.rank == self.last_claim.rank
+        picked_matches = (
+            picked_card.rank == self.last_claim.rank or picked_card.rank == JOKER_RANK
+        )
         if picked_matches:
             penalty_player_id = challenger_id
         else:
             penalty_player_id = self.last_claim.player_id
 
         self.players[penalty_player_id].hand.extend(self.pile)
+        self.players[penalty_player_id].hand = sort_cards(self.players[penalty_player_id].hand)
+
         outcome = ChallengeOutcome(
             claimant_id=self.last_claim.player_id,
             challenger_id=challenger_id,
@@ -176,6 +197,7 @@ class GameState:
             picked_card=picked_card,
             picked_matches_claim=picked_matches,
         )
+
         self._discard_pile()
         self._update_finished()
         self._advance_turn()
@@ -185,6 +207,8 @@ class GameState:
         self.pile = []
         self.last_claim = None
         self.last_played_cards = []
+        self.round_rank = None
+        self.round_starter_id = None
         self.phase = GamePhase.PLAYER_TURN
 
     def _advance_turn(self) -> None:
@@ -192,6 +216,7 @@ class GameState:
             raise ValueError("turn order not set")
         if self.phase == GamePhase.GAME_OVER:
             return
+
         step = self._direction_step()
         for _ in range(len(self.turn_order)):
             self.current_turn_index = (self.current_turn_index + step) % len(self.turn_order)
@@ -205,8 +230,21 @@ class GameState:
             if player_id in self.finished_order:
                 continue
             if not self.players[player_id].hand:
+                # A player that just claimed with an empty hand only ranks after
+                # the claim cycle ends (bluff/discard).
                 if self.last_claim and self.last_claim.player_id == player_id:
                     continue
                 self.finished_order.append(player_id)
         if len(self.finished_order) == len(self.turn_order):
             self.phase = GamePhase.GAME_OVER
+
+
+def sort_cards(cards: List[Card]) -> List[Card]:
+    return sorted(
+        cards,
+        key=lambda card: (
+            _RANK_ORDER.get(card.rank, len(_RANK_ORDER)),
+            _SUIT_ORDER.get(card.suit, len(_SUIT_ORDER)),
+            card.deck,
+        ),
+    )

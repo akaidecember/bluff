@@ -17,6 +17,8 @@ export type PublicState = {
     rank: string;
     count: number;
   } | null;
+  round_rank: string | null;
+  round_starter_id: string | null;
   last_play_count: number;
   pile_count: number;
   finished_order: string[];

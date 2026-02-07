@@ -15,7 +15,7 @@ export default function ConnectionStatusBadge({
   status,
 }: ConnectionStatusProps) {
   return (
-    <p>
+    <p className={`connection-pill ${status}`}>
       Connection: <strong>{statusLabels[status]}</strong>
     </p>
   );

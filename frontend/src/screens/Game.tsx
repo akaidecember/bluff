@@ -1,10 +1,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import PlayingCard from "../components/PlayingCard";
 import { useSound } from "../lib/sound";
 import type { ClientMessage, PrivateState, PublicState } from "../types/messages";
 
-const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const CLAIM_RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 export type GameProps = {
   playerId: string;
@@ -30,14 +31,33 @@ export default function Game({
   const isMyTurn = publicState?.current_player_id === playerId;
   const lastClaim = publicState?.last_claim ?? null;
   const hand = privateState?.hand ?? [];
+  const activeRoundRank = publicState?.round_rank ?? null;
 
   const canPlay = isMyTurn && (phase === "PLAYER_TURN" || phase === "CLAIM_MADE");
   const canPass = isMyTurn && (phase === "PLAYER_TURN" || phase === "CLAIM_MADE");
   const canCallBluff =
-    isMyTurn &&
-    phase === "CLAIM_MADE" &&
-    lastClaim !== null &&
-    lastClaim.player_id !== playerId;
+    isMyTurn && phase === "CLAIM_MADE" && lastClaim !== null && lastClaim.player_id !== playerId;
+
+  const effectiveClaimRank = activeRoundRank ?? claimRank;
+  const pickMax = Math.max(publicState?.last_play_count ?? 1, 1);
+
+  const playerNameById = useMemo(() => {
+    const mapping: Record<string, string> = {};
+    for (const player of publicState?.players ?? []) {
+      mapping[player.player_id] = player.display_name;
+    }
+    return mapping;
+  }, [publicState?.players]);
+
+  useEffect(() => {
+    if (activeRoundRank) {
+      setClaimRank(activeRoundRank);
+    }
+  }, [activeRoundRank]);
+
+  useEffect(() => {
+    setSelectedIndices((previous) => previous.filter((index) => index < hand.length));
+  }, [hand.length]);
 
   const playCards = () => {
     const card_indices = [...selectedIndices].sort((a, b) => a - b);
@@ -49,7 +69,7 @@ export default function Game({
       room_code: roomCode,
       player_id: playerId,
       card_indices,
-      claim_rank: claimRank,
+      claim_rank: effectiveClaimRank,
     });
     setSelectedIndices([]);
   };
@@ -71,8 +91,16 @@ export default function Game({
     if (!lastClaim) {
       return "No claim yet.";
     }
-    return `${lastClaim.player_id} claims ${lastClaim.count}x ${lastClaim.rank}.`;
-  }, [lastClaim]);
+    const name = playerNameById[lastClaim.player_id] ?? lastClaim.player_id;
+    return `${name} claims ${lastClaim.count}x ${lastClaim.rank}.`;
+  }, [lastClaim, playerNameById]);
+
+  const starterName = useMemo(() => {
+    if (!publicState?.round_starter_id) {
+      return null;
+    }
+    return playerNameById[publicState.round_starter_id] ?? publicState.round_starter_id;
+  }, [publicState?.round_starter_id, playerNameById]);
 
   const lastTurnRef = useRef<string | null>(null);
   const lastClaimRef = useRef<string | null>(null);
@@ -95,7 +123,7 @@ export default function Game({
   }, [play, lastClaim]);
 
   useEffect(() => {
-    const handKey = hand.join(",") ?? null;
+    const handKey = hand.join(",") || null;
     if (handKey && handKey !== lastHandRef.current) {
       play("reveal");
       lastHandRef.current = handKey;
@@ -103,117 +131,120 @@ export default function Game({
   }, [play, hand]);
 
   const toggleSelect = (index: number) => {
-    setSelectedIndices((prev) => {
-      if (prev.includes(index)) {
-        return prev.filter((value) => value !== index);
+    setSelectedIndices((previous) => {
+      if (previous.includes(index)) {
+        return previous.filter((value) => value !== index);
       }
-      return [...prev, index];
+      return [...previous, index];
     });
   };
 
-  const pickMax = lastClaim ? Math.max(lastClaim.count, 1) : 1;
-
   return (
-    <main>
-      <h1>Game Room {roomCode}</h1>
-      <section>
-        <h2>Status</h2>
-        <p>Phase: {phase}</p>
-        <p>Decks: {publicState?.deck_count ?? 0}</p>
-        <p>Direction: {publicState?.direction ?? ""}</p>
-        <p>Pile: {publicState?.pile_count ?? 0} cards</p>
+    <main className="screen game-screen">
+      <section className="panel status-panel">
+        <h1>Room {roomCode}</h1>
+        <div className="status-grid">
+          <p>
+            <span>Phase</span>
+            <strong>{phase}</strong>
+          </p>
+          <p>
+            <span>Decks</span>
+            <strong>{publicState?.deck_count ?? 0}</strong>
+          </p>
+          <p>
+            <span>Direction</span>
+            <strong>{publicState?.direction ?? ""}</strong>
+          </p>
+          <p>
+            <span>Pile</span>
+            <strong>{publicState?.pile_count ?? 0} cards</strong>
+          </p>
+        </div>
         <AnimatePresence mode="wait">
           <motion.p
             key={publicState?.current_player_id ?? "none"}
+            className="callout"
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.2 }}
           >
-            Current Turn: {publicState?.current_player_id ?? "TBD"}
+            Turn: {playerNameById[publicState?.current_player_id ?? ""] ?? publicState?.current_player_id ?? "TBD"}
           </motion.p>
         </AnimatePresence>
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={lastClaim ? `${lastClaim.player_id}-${lastClaim.count}-${lastClaim.rank}` : "no-claim"}
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
-            transition={{ duration: 0.2 }}
-          >
-            Last Claim: {claimHelper}
-          </motion.p>
-        </AnimatePresence>
+        <p className="callout">Last Claim: {claimHelper}</p>
+        {activeRoundRank && starterName && (
+          <p className="callout">Round Lock: {activeRoundRank} (started by {starterName})</p>
+        )}
       </section>
 
-      {publicState && (
-        <section>
-          <h2>Players</h2>
-          <ul>
-            {publicState.players.map((player) => (
-              <li key={player.player_id}>
-                {player.display_name} ({player.player_id}) - {player.hand_count} cards
-              </li>
-            ))}
-          </ul>
-          {publicState.finished_order.length > 0 && (
-            <p>Finished: {publicState.finished_order.join(", ")}</p>
-          )}
-        </section>
-      )}
-
-      <section>
-        <h2>Your Hand</h2>
-        <div>
-          {hand.length === 0 ? (
-            <p>No cards.</p>
-          ) : (
-            hand.map((card, index) => (
-              <button
-                type="button"
-                key={`${card}-${index}`}
-                onClick={() => toggleSelect(index)}
-                disabled={!canPlay}
-                style={{
-                  marginRight: "0.5rem",
-                  marginBottom: "0.5rem",
-                  fontWeight: selectedIndices.includes(index) ? "bold" : "normal",
-                }}
+      <section className="panel players-panel">
+        <h2>Players</h2>
+        <div className="player-list">
+          {(publicState?.players ?? []).map((player) => {
+            const finishedIndex = publicState?.finished_order.indexOf(player.player_id) ?? -1;
+            const isCurrent = publicState?.current_player_id === player.player_id;
+            return (
+              <article
+                key={player.player_id}
+                className={`player-pill${isCurrent ? " current" : ""}${finishedIndex >= 0 ? " finished" : ""}`}
               >
-                {card}
-              </button>
-            ))
-          )}
+                <h3>{player.display_name}</h3>
+                <p>{player.hand_count} cards</p>
+                {finishedIndex >= 0 && <p>Place #{finishedIndex + 1}</p>}
+              </article>
+            );
+          })}
         </div>
       </section>
 
-      <section>
+      <section className="panel hand-panel">
+        <div className="panel-row">
+          <h2>Your Hand</h2>
+          <p>{hand.length} cards</p>
+        </div>
+        {hand.length === 0 ? (
+          <p className="muted">No cards left.</p>
+        ) : (
+          <div className="hand-grid">
+            {hand.map((card, index) => (
+              <PlayingCard
+                key={`${card}-${index}`}
+                code={card}
+                selected={selectedIndices.includes(index)}
+                disabled={!canPlay}
+                onClick={() => toggleSelect(index)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel actions-panel">
         <h2>Actions</h2>
-        <fieldset>
-          <legend>Play Cards</legend>
-          <p>Selected: {selectedIndices.length} card(s)</p>
-          <label>
-            Claim Rank
-            <select value={claimRank} onChange={(event) => setClaimRank(event.target.value)}>
-              {RANKS.map((rank) => (
+        <div className="actions-grid">
+          <div className="control-group">
+            <label htmlFor="claim-rank">Claim Rank</label>
+            <select
+              id="claim-rank"
+              value={effectiveClaimRank}
+              onChange={(event) => setClaimRank(event.target.value)}
+              disabled={Boolean(activeRoundRank)}
+            >
+              {CLAIM_RANKS.map((rank) => (
                 <option key={rank} value={rank}>
                   {rank}
                 </option>
               ))}
             </select>
-          </label>
-        </fieldset>
-        <button type="button" onClick={playCards} disabled={!canPlay || selectedIndices.length === 0}>
-          Play Selected
-        </button>
-        <button type="button" onClick={passTurn} disabled={!canPass}>
-          Pass
-        </button>
-        <fieldset>
-          <legend>Call Bluff</legend>
-          <label>
-            Pick a card (1-{pickMax})
+            {activeRoundRank && <small>Rank is locked for this round.</small>}
+          </div>
+
+          <div className="control-group">
+            <label htmlFor="pick-index">Bluff Pick (1-{pickMax})</label>
             <input
+              id="pick-index"
               type="number"
               min={1}
               max={pickMax}
@@ -228,11 +259,25 @@ export default function Game({
                 setPickIndex(clamped - 1);
               }}
             />
-          </label>
-        </fieldset>
-        <button type="button" onClick={callBluff} disabled={!canCallBluff}>
-          Call Bluff
-        </button>
+          </div>
+        </div>
+
+        <div className="button-row">
+          <button
+            type="button"
+            className="primary"
+            onClick={playCards}
+            disabled={!canPlay || selectedIndices.length === 0}
+          >
+            Play Selected ({selectedIndices.length})
+          </button>
+          <button type="button" className="secondary" onClick={passTurn} disabled={!canPass}>
+            Pass
+          </button>
+          <button type="button" className="danger" onClick={callBluff} disabled={!canCallBluff}>
+            Call Bluff
+          </button>
+        </div>
       </section>
     </main>
   );

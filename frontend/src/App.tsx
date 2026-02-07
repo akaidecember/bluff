@@ -44,15 +44,16 @@ export default function App() {
       }
       if (message.type === "game_started") {
         setScreen("game");
+        setLastEvent("Game started.");
       }
       if (message.type === "challenge_resolved") {
         const resultText = message.picked_matches_claim
-          ? `Bluff failed. ${message.challenger_id} picks up the pile.`
-          : `Bluff caught. ${message.claimant_id} picks up the pile.`;
-        setLastEvent(`${resultText} (Picked ${message.picked_card})`);
+          ? `Bluff failed. ${message.challenger_id} takes the pile.`
+          : `Bluff caught. ${message.claimant_id} takes the pile.`;
+        setLastEvent(`${resultText} Picked ${message.picked_card}.`);
       }
       if (message.type === "pile_discarded") {
-        setLastEvent("Pile discarded after a full pass.");
+        setLastEvent("Round ended by pass. Center pile discarded.");
       }
       if (message.type === "error" || message.type === "invalid_action") {
         setLastError(message.message);
@@ -73,12 +74,15 @@ export default function App() {
   }, [publicState]);
 
   return (
-    <div>
-      <header>
+    <div className="app-shell">
+      <header className="app-header">
         <ConnectionStatusBadge status={status} />
-        {lastError && <p>Server: {lastError}</p>}
-        {lastEvent && <p>Event: {lastEvent}</p>}
+        <div className="message-stack">
+          {lastError && <p className="banner error">Server: {lastError}</p>}
+          {lastEvent && <p className="banner info">Event: {lastEvent}</p>}
+        </div>
       </header>
+
       {screen === "lobby" ? (
         <Lobby
           playerId={playerId}

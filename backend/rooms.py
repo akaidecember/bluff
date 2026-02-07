@@ -7,7 +7,17 @@ import secrets
 import string
 from typing import Dict, List, Optional, Tuple
 
-from .game_engine import Card, GamePhase, GameState, Player, RANKS, SUITS, TurnDirection
+from .game_engine import (
+    Card,
+    GamePhase,
+    GameState,
+    JOKER_RANK,
+    JOKER_VARIANTS,
+    Player,
+    RANKS,
+    SUITS,
+    TurnDirection,
+)
 
 
 ROOM_CODE_ALPHABET = string.ascii_uppercase + string.digits
@@ -32,6 +42,8 @@ def build_deck(deck_count: int) -> List[Card]:
         for suit in SUITS:
             for rank in RANKS:
                 deck.append(Card(rank=rank, suit=suit, deck=deck_id))
+        for joker_variant in JOKER_VARIANTS:
+            deck.append(Card(rank=JOKER_RANK, suit=joker_variant, deck=deck_id))
     random.SystemRandom().shuffle(deck)
     return deck
 
@@ -69,16 +81,11 @@ class Room:
     def start_game(self) -> None:
         if not self.can_start():
             raise ValueError("need at least two players to start")
-        total_cards = 52 * self.deck_count
-        if total_cards % len(self.players) != 0:
-            raise ValueError("player count must evenly divide the deck")
         deck = build_deck(self.deck_count)
-        cards_per_player = total_cards // len(self.players)
-        hands: Dict[str, List[Card]] = {}
-        for index, player_id in enumerate(self.join_order):
-            start = index * cards_per_player
-            end = start + cards_per_player
-            hands[player_id] = deck[start:end]
+        hands: Dict[str, List[Card]] = {player_id: [] for player_id in self.join_order}
+        for card_index, card in enumerate(deck):
+            player_id = self.join_order[card_index % len(self.join_order)]
+            hands[player_id].append(card)
         self.game_state.start_game(self.join_order, self.direction)
         self.game_state.set_dealt_hands(hands)
 
