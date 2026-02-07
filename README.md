@@ -1,5 +1,7 @@
 # Bluff
 
+<img width="1387" height="909" alt="image" src="https://github.com/user-attachments/assets/48a9ce54-0d40-4aeb-8094-135ba10f84a6" />
+
 Bluff is a multiplayer bluff card game built with:
 
 - Backend: FastAPI + WebSocket
