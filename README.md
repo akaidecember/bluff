@@ -5,24 +5,8 @@
 This repository is currently an **incomplete project**.
 
 - Core gameplay is under active development.
-- Rules and API shapes may still change.
 - UI/UX and game state handling are not final.
 - Expect rough edges and missing validations.
-
-## Current scope
-
-- Real-time multiplayer room flow over WebSocket
-- Host-created rooms
-- Card-play bluff loop (WIP)
-- Basic frontend game screen
-
-## Known gaps
-
-- Not production-ready
-- Limited test coverage
-- Incomplete edge-case handling
-- Ongoing rules refinements
-- Documentation still evolving
 
 ## Local development
 
@@ -55,4 +39,4 @@ Then open the frontend URL shown by Vite (usually `http://localhost:5173`).
 2. Create a room in the first tab.
 3. Join the room code in the second tab.
 4. Start the game from the host tab.
-5. Play turns and test bluff/pass actions.
+5. Play turns and test.
