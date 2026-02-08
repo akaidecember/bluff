@@ -1,1 +1,1 @@
-"""Backend package for the Bluffer Clone server."""
+"""Backend package for the Bluffer server."""

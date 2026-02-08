@@ -7,6 +7,8 @@ import Lobby from "./screens/Lobby";
 import type { PrivateState, PublicState, ServerMessage } from "./types/messages";
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
+//Insert own IP addr. for local hosted within the same wifi addr.
+//const WS_URL = "ws://<IP_ADDR>/ws";
 
 type Screen = "lobby" | "game";
 
@@ -34,11 +36,7 @@ export default function App() {
       if (message.type === "private_state") {
         setPrivateState(message.state);
       }
-      if (
-        message.type === "room_created" ||
-        message.type === "room_joined" ||
-        message.type === "room_already_joined"
-      ) {
+      if (message.type === "room_created" || message.type === "room_joined" || message.type === "room_already_joined") {
         setRoomCode(message.room_code);
         setScreen("lobby");
       }

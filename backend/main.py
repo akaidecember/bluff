@@ -12,9 +12,7 @@ from .rooms import JoinStatus, Room, RoomManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bluffer.backend")
-
 app = FastAPI(title="Bluffer Backend")
-
 
 @dataclass
 class ConnectionManager:
@@ -29,18 +27,15 @@ class ConnectionManager:
         self.active_connections.discard(websocket)
         logger.info("client disconnected (%s active)", len(self.active_connections))
 
-
 manager = ConnectionManager()
 room_manager = RoomManager()
 room_connections: Dict[str, Set[WebSocket]] = {}
 connection_rooms: Dict[WebSocket, str] = {}
 connection_players: Dict[WebSocket, str] = {}
 
-
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
@@ -60,6 +55,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 display_name = payload.get("display_name")
                 deck_count = payload.get("deck_count", 1)
                 direction_value = payload.get("direction", TurnDirection.CLOCKWISE.value)
+
                 if not player_id or not display_name:
                     await websocket.send_json(
                         {"type": "error", "message": "player_id and display_name required"}
@@ -109,17 +105,26 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 status, room = room_manager.join_room(room_code, player_id, display_name)
                 if status == JoinStatus.NOT_FOUND:
                     await websocket.send_json(
-                        {"type": "room_not_found", "room_code": room_code}
+                        {
+                            "type": "room_not_found", 
+                            "room_code": room_code
+                        }
                     )
                     continue
                 if status == JoinStatus.FULL:
                     await websocket.send_json(
-                        {"type": "room_full", "room_code": room_code}
+                        {
+                            "type": "room_full", 
+                            "room_code": room_code
+                        }
                     )
                     continue
                 if status == JoinStatus.CLOSED:
                     await websocket.send_json(
-                        {"type": "room_closed", "room_code": room_code}
+                        {
+                            "type": "room_closed", 
+                            "room_code": room_code
+                        }
                     )
                     continue
                 room_connections.setdefault(room_code, set()).add(websocket)
@@ -147,14 +152,20 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 player_id = payload.get("player_id")
                 if not room_code or not player_id:
                     await websocket.send_json(
-                        {"type": "error", "message": "room_code and player_id required"}
+                        {
+                            "type": "error", 
+                            "message": "room_code and player_id required"
+                        }
                     )
                     continue
                 try:
                     room = room_manager.start_game(room_code, player_id)
                 except ValueError as exc:
                     await websocket.send_json(
-                        {"type": "invalid_action", "message": str(exc)}
+                        {
+                            "type": "invalid_action", 
+                            "message": str(exc)
+                        }
                     )
                     continue
                 await _broadcast_room(
@@ -174,18 +185,27 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 player_id = payload.get("player_id")
                 if not room_code or not player_id:
                     await websocket.send_json(
-                        {"type": "error", "message": "room_code and player_id required"}
+                        {
+                            "type": "error", 
+                            "message": "room_code and player_id required"
+                        }
                     )
                     continue
                 if connection_players.get(websocket) != player_id:
                     await websocket.send_json(
-                        {"type": "error", "message": "player_id mismatch"}
+                        {
+                            "type": "error", 
+                            "message": "player_id mismatch"
+                        }
                     )
                     continue
                 room = room_manager.rooms.get(room_code)
                 if room is None:
                     await websocket.send_json(
-                        {"type": "room_not_found", "room_code": room_code}
+                        {
+                            "type": "room_not_found", 
+                            "room_code": room_code
+                        }
                     )
                     continue
                 try:
@@ -244,11 +264,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         if room_code:
             room_connections.get(room_code, set()).discard(websocket)
 
-
 async def _broadcast_room(room_code: str, message: dict) -> None:
     for socket in room_connections.get(room_code, set()):
         await socket.send_json(message)
-
 
 async def _send_public_state(room_code: str) -> None:
     room = room_manager.rooms.get(room_code)
@@ -256,7 +274,6 @@ async def _send_public_state(room_code: str) -> None:
         return
     state = _public_state(room)
     await _broadcast_room(room_code, {"type": "public_state", "state": state})
-
 
 async def _send_private_state(room_code: str) -> None:
     room = room_manager.rooms.get(room_code)
@@ -279,7 +296,6 @@ async def _send_private_state(room_code: str) -> None:
                 },
             }
         )
-
 
 def _public_state(room: Room) -> dict:
     last_claim = None
