@@ -10,7 +10,7 @@ const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
 //Insert own IP addr. for local hosted within the same wifi addr.
 //const WS_URL = "ws://<IP_ADDR>/ws";
 
-type Screen = "lobby" | "game";
+type Screen = "lobby" | "game"; 
 
 export default function App() {
   const client = useMemo(() => new WebSocketClient(), []);
