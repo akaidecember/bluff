@@ -9,7 +9,13 @@ Bluff is a multiplayer bluff card game built with:
 
 This project is currently a **work in progress**.
 
-## Documentation Index
+## Play Online
+
+Playable link (hosted on Vercel + Render):
+
+`https://bluff-murex.vercel.app`
+
+## Documentation Index (Will add, WIP)
 
 - `docs/GAMEPLAY.md`: Full game rules and flow.
 - `docs/API.md`: HTTP + WebSocket API reference with message schemas.
