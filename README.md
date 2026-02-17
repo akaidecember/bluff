@@ -13,7 +13,7 @@ This project is currently a **work in progress**.
 
 Playable link (hosted on Vercel + Render):
 
-`https://bluff-murex.vercel.app`
+[https://bluff-murex.vercel.app]
 
 ## Documentation Index (Will add, WIP)
 
