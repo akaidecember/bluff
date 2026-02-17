@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import ConnectionStatusBadge from "./components/ConnectionStatus";
 import { WebSocketClient, type ConnectionStatus } from "./lib/ws";
@@ -11,6 +11,7 @@ const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
 //const WS_URL = "ws://<IP_ADDR>/ws";
 
 type Screen = "lobby" | "game"; 
+type ChallengeResolvedMessage = Extract<ServerMessage, { type: "challenge_resolved" }>;
 
 export default function App() {
   const client = useMemo(() => new WebSocketClient(), []);
@@ -25,6 +26,8 @@ export default function App() {
   const [privateState, setPrivateState] = useState<PrivateState | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastEvent, setLastEvent] = useState<string | null>(null);
+  const [lastChallenge, setLastChallenge] = useState<ChallengeResolvedMessage | null>(null);
+  const challengeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     client.connect(WS_URL);
@@ -49,6 +52,7 @@ export default function App() {
           ? `Bluff failed. ${message.challenger_id} takes the pile.`
           : `Bluff caught. ${message.claimant_id} takes the pile.`;
         setLastEvent(`${resultText} Picked ${message.picked_card}.`);
+        setLastChallenge(message);
       }
       if (message.type === "pile_discarded") {
         setLastEvent("Round ended by pass. Center pile discarded.");
@@ -70,6 +74,23 @@ export default function App() {
       setScreen("game");
     }
   }, [publicState]);
+
+  useEffect(() => {
+    if (!lastChallenge) {
+      return;
+    }
+    if (challengeTimeoutRef.current) {
+      window.clearTimeout(challengeTimeoutRef.current);
+    }
+    const timeoutId = window.setTimeout(() => {
+      setLastChallenge(null);
+      challengeTimeoutRef.current = null;
+    }, 3000);
+    challengeTimeoutRef.current = timeoutId;
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [lastChallenge]);
 
   return (
     <div className="app-shell">
@@ -102,6 +123,7 @@ export default function App() {
           roomCode={roomCode}
           publicState={publicState}
           privateState={privateState}
+          lastChallenge={lastChallenge}
           onSend={(message) => client.send(message)}
         />
       )}

@@ -9,6 +9,7 @@ export type PlayingCardProps = {
   title?: string;
   style?: CSSProperties;
   onClick?: () => void;
+  onMouseEnter?: () => void;
 };
 
 export default function PlayingCard({
@@ -20,6 +21,7 @@ export default function PlayingCard({
   title,
   style,
   onClick,
+  onMouseEnter,
 }: PlayingCardProps) {
   const safeCode = code ?? "";
   const src = faceDown ? "/cards/BACK.svg" : `/cards/${safeCode}.svg`;
@@ -30,6 +32,7 @@ export default function PlayingCard({
       className={`playing-card${selected ? " selected" : ""} ${className}`.trim()}
       disabled={disabled}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
       aria-pressed={selected}
       aria-label={label}
       title={title}

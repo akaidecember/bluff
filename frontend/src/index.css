@@ -11,6 +11,7 @@
   --accent: #1f57d6;
   --accent-dark: #1746ad;
   --accent-soft: #d8e5ff;
+  --card-hover-lift: 12px;
   font-family: "Trebuchet MS", "Avenir Next", "Verdana", sans-serif;
   color: var(--ink);
   line-height: 1.35;
@@ -371,7 +372,7 @@ button.danger {
   position: absolute;
   left: 1rem;
   bottom: 1rem;
-  z-index: 13;
+  z-index: 30;
 }
 
 .info-dot {
@@ -399,6 +400,7 @@ button.danger {
   gap: 0.34rem;
   background: rgba(8, 18, 37, 0.73);
   border: 1px solid rgba(255, 255, 255, 0.4);
+  z-index: 31;
   opacity: 0;
   transform: translateY(7px);
   pointer-events: none;
@@ -487,6 +489,8 @@ button.danger {
 }
 
 .seat-meta {
+  position: relative;
+  z-index: 5;
   min-width: 124px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.45);
@@ -516,6 +520,7 @@ button.danger {
   position: relative;
   width: var(--seat-fan-width);
   height: var(--seat-fan-height);
+  z-index: 1;
 }
 
 .seat-fan-card {
@@ -541,7 +546,119 @@ button.danger {
   border: 1px solid rgba(255, 255, 255, 0.45);
   background: rgba(244, 248, 255, 0.9);
   box-shadow: 0 15px 28px rgba(17, 31, 63, 0.3);
-  overflow: hidden;
+  overflow: visible;
+}
+
+.play-animation-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.play-card-ghost {
+  position: absolute;
+  left: 50%;
+  bottom: calc(1rem + var(--play-origin-y));
+  width: var(--my-card-width);
+  opacity: 0;
+  transform: translateX(calc(-50% + var(--x-offset, 0px))) translateY(14px) rotate(var(--rot, 0deg));
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35));
+  animation: playCardFly var(--play-duration, 520ms) cubic-bezier(0.22, 0.7, 0.12, 1)
+    var(--delay, 0ms) forwards;
+}
+
+.play-card-ghost img {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+}
+
+.bluff-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  padding: 1.4rem;
+  background: radial-gradient(circle at 50% 40%, rgba(14, 18, 34, 0.3), rgba(9, 11, 24, 0.82));
+  z-index: 120;
+  pointer-events: none;
+}
+
+.bluff-reveal-card {
+  width: min(190px, 45vw);
+  aspect-ratio: 2.5 / 3.5;
+  perspective: 900px;
+}
+
+.bluff-reveal-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: bluffFlip 840ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+.bluff-reveal-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 14px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+.bluff-reveal-face.back {
+  transform: rotateY(0deg);
+}
+
+.bluff-reveal-face.front {
+  transform: rotateY(180deg);
+}
+
+.bluff-reveal-badge {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  animation: bluffPop 520ms ease-out 520ms both;
+}
+
+.bluff-reveal-badge span {
+  font-size: 1.4rem;
+}
+
+.bluff-reveal-badge small {
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  opacity: 0.9;
+}
+
+.bluff-reveal-badge.liar {
+  background: linear-gradient(120deg, #ff3b2f, #ffba6b);
+  color: #2b0b08;
+  box-shadow: 0 10px 28px rgba(255, 96, 61, 0.45);
+}
+
+.bluff-reveal-badge.miss {
+  background: linear-gradient(120deg, #74d2ff, #9fffe1);
+  color: #02212c;
+  box-shadow: 0 10px 28px rgba(69, 172, 255, 0.4);
+}
+
+.bluff-reveal-overlay.liar {
+  background: radial-gradient(circle at 50% 40%, rgba(96, 8, 8, 0.28), rgba(9, 8, 16, 0.84));
+}
+
+.bluff-reveal-overlay.miss {
+  background: radial-gradient(circle at 50% 40%, rgba(8, 40, 80, 0.22), rgba(8, 11, 24, 0.84));
 }
 
 .hand-layout {
@@ -610,7 +727,7 @@ button.danger {
   justify-items: center;
   height: var(--cards-viewport-height);
   padding: 0.1rem 0 0;
-  overflow: hidden;
+  overflow: visible;
   align-content: start;
 }
 
@@ -625,10 +742,16 @@ button.danger {
 .playing-card {
   width: 110px;
   padding: 0;
-  background: transparent;
+  background: #ffffff;
   border: 0;
   border-radius: 12px;
+  overflow: hidden;
   transition: transform 160ms ease, filter 160ms ease;
+}
+
+.playing-card:disabled {
+  opacity: 1;
+  filter: none;
 }
 
 .playing-card img {
@@ -645,15 +768,54 @@ button.danger {
 }
 
 .my-hand-card:hover:not(:disabled):not(.selected) {
-  transform: translateY(-3px) !important;
+  transform: translateY(calc(-1 * var(--card-hover-lift))) !important;
   box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.65);
 }
 
 .my-hand-card.selected {
   outline: none;
-  transform: translateY(-3px);
+  transform: translateY(calc(-1 * var(--card-hover-lift)));
   box-shadow: inset 0 0 0 3px #3b82f6;
   filter: none;
+}
+
+@keyframes playCardFly {
+  0% {
+    opacity: 0;
+    transform: translateX(calc(-50% + var(--x-offset, 0px))) translateY(14px)
+      rotate(var(--rot, 0deg));
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(calc(-50% + var(--x-offset, 0px)))
+      translateY(calc(-1 * var(--play-flight-y, 240px))) rotate(var(--rot, 0deg));
+  }
+}
+
+@keyframes bluffFlip {
+  0% {
+    transform: rotateY(0deg) scale(0.9);
+  }
+  60% {
+    transform: rotateY(150deg) scale(1);
+  }
+  100% {
+    transform: rotateY(180deg) scale(1);
+  }
+}
+
+@keyframes bluffPop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes turnPulse {
@@ -704,6 +866,17 @@ button.danger {
 .pick-card.selected {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-card-ghost {
+    animation: none;
+    opacity: 0;
+  }
+  .bluff-reveal-inner,
+  .bluff-reveal-badge {
+    animation: none;
+  }
 }
 
 .result-panel {

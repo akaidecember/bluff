@@ -115,6 +115,20 @@ You can also use `frontend/.env.example` as reference for this variable.
 5. Host (tab A) clicks `Start Game`.
 6. Play cards, pass, and challenge bluff via `Call`.
 
+## Dev Simulation (Hidden)
+
+For automated testing runs (no UI), use the built-in simulator:
+
+```bash
+python -m backend.dev_simulation --players 4 --games 3 --deck-count 1
+```
+
+For dev-only WebSocket automation, start the backend with:
+
+```bash
+BLUFFER_DEV_MODE=1 uvicorn backend.main:app --reload --port 8000
+```
+
 ## Current Game Behavior Summary
 
 - Players: 2 to 6.

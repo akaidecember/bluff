@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import PlayingCard from "../components/PlayingCard";
 import { useSound } from "../lib/sound";
-import type { ClientMessage, PrivateState, PublicState } from "../types/messages";
+import type { ClientMessage, PrivateState, PublicState, ServerMessage } from "../types/messages";
 
 const CLAIM_RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
@@ -11,6 +11,7 @@ export type GameProps = {
   roomCode: string;
   publicState: PublicState | null;
   privateState: PrivateState | null;
+  lastChallenge: Extract<ServerMessage, { type: "challenge_resolved" }> | null;
   onSend: (message: ClientMessage) => void;
 };
 
@@ -32,6 +33,22 @@ type PileStackProps = {
   metaText?: string;
 };
 
+type PlayAnimation = {
+  id: string;
+  code: string;
+  offset: number;
+  rotation: number;
+  delay: number;
+};
+
+type BluffReveal = {
+  id: string;
+  pickedCard: string;
+  pickedMatchesClaim: boolean;
+  claimantId: string;
+  challengerId: string;
+};
+
 type ResponsiveLayout = {
   stageWidth: number;
   myCardWidth: number;
@@ -45,6 +62,9 @@ type ResponsiveLayout = {
   cardsViewportHeight: number;
   tableBottomPadding: number;
 };
+
+const PLAY_ANIMATION_MS = 520;
+const PLAY_ANIMATION_STAGGER_MS = 70;
 
 function computeResponsiveLayout(rawWidth: number): ResponsiveLayout {
   const stageWidth = Math.max(320, rawWidth);
@@ -169,6 +189,7 @@ export default function Game({
   roomCode,
   publicState,
   privateState,
+  lastChallenge,
   onSend,
 }: GameProps) {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
@@ -179,7 +200,15 @@ export default function Game({
   const [responsiveLayout, setResponsiveLayout] = useState<ResponsiveLayout>(() =>
     computeResponsiveLayout(1280)
   );
+  const [playAnimations, setPlayAnimations] = useState<PlayAnimation[]>([]);
+  const [bluffReveal, setBluffReveal] = useState<BluffReveal | null>(null);
+  const [handCenterWidth, setHandCenterWidth] = useState<number | null>(null);
   const tableStageRef = useRef<HTMLElement | null>(null);
+  const handCenterRef = useRef<HTMLDivElement | null>(null);
+  const playAnimationTimeouts = useRef<number[]>([]);
+  const bluffRevealTimeout = useRef<number | null>(null);
+  const lastBluffRevealRef = useRef<string | null>(null);
+  const lastHoverSoundRef = useRef<number>(0);
   const { play } = useSound();
 
   const phase = publicState?.phase ?? "UNKNOWN";
@@ -232,10 +261,11 @@ export default function Game({
       responsiveLayout.myCardWidth - Math.abs(responsiveLayout.myCardOverlap),
       14
     );
-    const availableWidth = Math.max(
+    const fallbackWidth = Math.max(
       responsiveLayout.stageWidth * 0.76,
       responsiveLayout.myCardWidth
     );
+    const availableWidth = Math.max(handCenterWidth ?? fallbackWidth, responsiveLayout.myCardWidth);
     const fittedByWidth = Math.max(
       6,
       Math.floor((availableWidth - responsiveLayout.myCardWidth) / effectiveStep) + 1
@@ -251,7 +281,13 @@ export default function Game({
       return Math.ceil(hand.length / 3);
     }
     return Math.ceil(hand.length / 4);
-  }, [hand.length, responsiveLayout.myCardOverlap, responsiveLayout.myCardWidth, responsiveLayout.stageWidth]);
+  }, [
+    hand.length,
+    handCenterWidth,
+    responsiveLayout.myCardOverlap,
+    responsiveLayout.myCardWidth,
+    responsiveLayout.stageWidth,
+  ]);
 
   const handRows = useMemo(() => {
     const rows: Array<{ start: number; cards: string[] }> = [];
@@ -319,6 +355,45 @@ export default function Game({
   }, [canCallBluff]);
 
   useEffect(() => {
+    return () => {
+      playAnimationTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      playAnimationTimeouts.current = [];
+      if (bluffRevealTimeout.current) {
+        window.clearTimeout(bluffRevealTimeout.current);
+        bluffRevealTimeout.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!lastChallenge) {
+      return;
+    }
+    if (lastChallenge.room_code !== roomCode) {
+      return;
+    }
+    const key = `${lastChallenge.room_code}-${lastChallenge.claimant_id}-${lastChallenge.challenger_id}-${lastChallenge.picked_card}-${lastChallenge.picked_matches_claim}`;
+    if (key === lastBluffRevealRef.current) {
+      return;
+    }
+    lastBluffRevealRef.current = key;
+    setBluffReveal({
+      id: key,
+      pickedCard: lastChallenge.picked_card,
+      pickedMatchesClaim: lastChallenge.picked_matches_claim,
+      claimantId: lastChallenge.claimant_id,
+      challengerId: lastChallenge.challenger_id,
+    });
+    if (bluffRevealTimeout.current) {
+      window.clearTimeout(bluffRevealTimeout.current);
+    }
+    bluffRevealTimeout.current = window.setTimeout(() => {
+      setBluffReveal(null);
+      bluffRevealTimeout.current = null;
+    }, 2600);
+  }, [lastChallenge]);
+
+  useEffect(() => {
     const node = tableStageRef.current;
     if (!node) {
       return;
@@ -369,6 +444,31 @@ export default function Game({
     };
   }, []);
 
+  useEffect(() => {
+    const node = handCenterRef.current;
+    if (!node) {
+      return;
+    }
+    let frameId = 0;
+    const schedule = (width: number) => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => setHandCenterWidth(width));
+    };
+    schedule(node.clientWidth);
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      schedule(entry.contentRect.width);
+    });
+    observer.observe(node);
+    return () => {
+      cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
+  }, []);
+
   const lastTurnRef = useRef<string | null>(null);
   const lastClaimRef = useRef<string | null>(null);
   const lastHandRef = useRef<string | null>(null);
@@ -407,6 +507,45 @@ export default function Game({
     });
   };
 
+  const handleCardHover = () => {
+    if (!canPlay) {
+      return;
+    }
+    const now = performance.now();
+    if (now - lastHoverSoundRef.current < 80) {
+      return;
+    }
+    lastHoverSoundRef.current = now;
+    play("hover", { volume: 0.07 });
+  };
+
+  const queuePlayAnimation = (cards: string[]) => {
+    if (cards.length === 0) {
+      return;
+    }
+    const base = Date.now();
+    const mid = (cards.length - 1) / 2;
+    const nextAnimations = cards.map((code, index) => {
+      const offset = (index - mid) * 18;
+      const rotation = (index - mid) * 5;
+      return {
+        id: `${base}-${index}-${code}`,
+        code,
+        offset,
+        rotation,
+        delay: index * PLAY_ANIMATION_STAGGER_MS,
+      };
+    });
+    setPlayAnimations((previous) => [...previous, ...nextAnimations]);
+    const totalDuration = PLAY_ANIMATION_MS + PLAY_ANIMATION_STAGGER_MS * cards.length + 140;
+    const timeoutId = window.setTimeout(() => {
+      setPlayAnimations((previous) =>
+        previous.filter((entry) => !nextAnimations.some((item) => item.id === entry.id))
+      );
+    }, totalDuration);
+    playAnimationTimeouts.current.push(timeoutId);
+  };
+
   const playCards = () => {
     if (!effectiveClaimRank) {
       return;
@@ -415,6 +554,9 @@ export default function Game({
     if (cardIndices.length === 0) {
       return;
     }
+    play("shuffle", { volume: 0.08 });
+    const selectedCards = cardIndices.map((index) => hand[index]).filter(Boolean);
+    queuePlayAnimation(selectedCards);
     onSend({
       type: "play_cards",
       room_code: roomCode,
@@ -473,6 +615,26 @@ export default function Game({
     [activeRoundRank]
   );
 
+  const revealResult = useMemo(() => {
+    if (!bluffReveal) {
+      return null;
+    }
+    if (bluffReveal.pickedMatchesClaim) {
+      const challengerName = playerNameById[bluffReveal.challengerId] ?? bluffReveal.challengerId;
+      return {
+        label: "MISS",
+        detail: `${challengerName} called wrong.`,
+        tone: "miss",
+      };
+    }
+    const claimantName = playerNameById[bluffReveal.claimantId] ?? bluffReveal.claimantId;
+    return {
+      label: "LIAR!",
+      detail: `${claimantName} got caught.`,
+      tone: "liar",
+    };
+  }, [bluffReveal, playerNameById]);
+
   const tableStageStyle = useMemo(
     () =>
       ({
@@ -485,6 +647,9 @@ export default function Game({
         "--cards-viewport-height": `${responsiveLayout.cardsViewportHeight}px`,
         "--controls-scale": String(controlsScale),
         "--table-bottom-padding": `${responsiveLayout.tableBottomPadding}px`,
+        "--play-origin-y": `${Math.round(responsiveLayout.handSlabHeight * 0.45)}px`,
+        "--play-flight-y": `${Math.round(Math.max(220, responsiveLayout.stageWidth * 0.2))}px`,
+        "--play-duration": `${PLAY_ANIMATION_MS}ms`,
       }) as CSSProperties,
     [
       controlsScale,
@@ -494,6 +659,7 @@ export default function Game({
       responsiveLayout.seatCardWidth,
       responsiveLayout.seatFanHeight,
       responsiveLayout.seatFanWidth,
+      responsiveLayout.stageWidth,
       responsiveLayout.tableBottomPadding,
       responsiveLayout.tableHandWidth,
     ]
@@ -600,6 +766,24 @@ export default function Game({
             );
           })}
 
+          <div className="play-animation-layer" aria-hidden="true">
+            {playAnimations.map((animation) => (
+              <div
+                key={animation.id}
+                className="play-card-ghost"
+                style={
+                  {
+                    "--x-offset": `${animation.offset}px`,
+                    "--rot": `${animation.rotation}deg`,
+                    "--delay": `${animation.delay}ms`,
+                  } as CSSProperties
+                }
+              >
+                <img src={`/cards/${animation.code}.svg`} alt="" draggable={false} />
+              </div>
+            ))}
+          </div>
+
           <div className="center-piles">
             <PileStack
               count={publicState?.pile_count ?? 0}
@@ -629,7 +813,7 @@ export default function Game({
                 </select>
               </div>
 
-              <div className="hand-center">
+              <div className="hand-center" ref={handCenterRef}>
                 <div className="my-hand-header">
                   <h2>Your Hand</h2>
                   <p>{hand.length} cards</p>
@@ -661,6 +845,7 @@ export default function Game({
                                 zIndex: rowIndex + 1,
                               }}
                               onClick={() => toggleSelect(globalIndex)}
+                              onMouseEnter={handleCardHover}
                             />
                           );
                         })}
@@ -713,6 +898,26 @@ export default function Game({
                 Cancel Bluff
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {bluffReveal && revealResult && (
+        <div className={`bluff-reveal-overlay ${revealResult.tone}`} role="alert" aria-live="polite">
+          <div className="bluff-reveal-card">
+            <div className="bluff-reveal-inner">
+              <img className="bluff-reveal-face back" src="/cards/BACK.svg" alt="" draggable={false} />
+              <img
+                className="bluff-reveal-face front"
+                src={`/cards/${bluffReveal.pickedCard}.svg`}
+                alt={bluffReveal.pickedCard}
+                draggable={false}
+              />
+            </div>
+          </div>
+          <div className={`bluff-reveal-badge ${revealResult.tone}`}>
+            <span>{revealResult.label}</span>
+            <small>{revealResult.detail}</small>
           </div>
         </div>
       )}
