@@ -4,9 +4,14 @@ import argparse
 import random
 from typing import Optional
 
-from .dev_tools import apply_dev_action, choose_dev_action, seed_room_for_dev
-from .game_engine import GamePhase, TurnDirection
-from .rooms import MAX_PLAYERS, MIN_PLAYERS, RoomManager
+try:
+    from .dev_tools import apply_dev_action, choose_dev_action, seed_room_for_dev
+    from .game_engine import GamePhase, TurnDirection
+    from .rooms import MAX_PLAYERS, MIN_PLAYERS, RoomManager
+except ImportError:  # pragma: no cover - fallback for non-package execution
+    from dev_tools import apply_dev_action, choose_dev_action, seed_room_for_dev
+    from game_engine import GamePhase, TurnDirection
+    from rooms import MAX_PLAYERS, MIN_PLAYERS, RoomManager
 
 
 def _parse_args() -> argparse.Namespace:

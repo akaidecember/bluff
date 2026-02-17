@@ -5,8 +5,12 @@ import os
 import random
 from typing import List, Optional
 
-from .game_engine import GamePhase, RANKS, TurnDirection
-from .rooms import JoinStatus, MAX_PLAYERS, MIN_PLAYERS, Room, RoomManager
+try:
+    from .game_engine import GamePhase, RANKS, TurnDirection
+    from .rooms import JoinStatus, MAX_PLAYERS, MIN_PLAYERS, Room, RoomManager
+except ImportError:  # pragma: no cover - fallback for non-package execution
+    from game_engine import GamePhase, RANKS, TurnDirection
+    from rooms import JoinStatus, MAX_PLAYERS, MIN_PLAYERS, Room, RoomManager
 
 DEV_MODE_ENV = "BLUFFER_DEV_MODE"
 

@@ -9,15 +9,26 @@ from typing import Dict, Set
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from .dev_tools import (
-    DEV_MODE_ENV,
-    apply_dev_action,
-    choose_dev_action,
-    is_dev_mode,
-    seed_room_for_dev,
-)
-from .game_engine import GamePhase, TurnDirection
-from .rooms import JoinStatus, MIN_PLAYERS, Room, RoomManager
+try:
+    from .dev_tools import (
+        DEV_MODE_ENV,
+        apply_dev_action,
+        choose_dev_action,
+        is_dev_mode,
+        seed_room_for_dev,
+    )
+    from .game_engine import GamePhase, TurnDirection
+    from .rooms import JoinStatus, MIN_PLAYERS, Room, RoomManager
+except ImportError:  # pragma: no cover - fallback for non-package execution
+    from dev_tools import (
+        DEV_MODE_ENV,
+        apply_dev_action,
+        choose_dev_action,
+        is_dev_mode,
+        seed_room_for_dev,
+    )
+    from game_engine import GamePhase, TurnDirection
+    from rooms import JoinStatus, MIN_PLAYERS, Room, RoomManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bluffer.backend")
