@@ -13,7 +13,7 @@ This project is currently a **work in progress**.
 
 Playable link (hosted on Vercel + Render):
 
-[https://bluff-murex.vercel.app]
+[https://bluff-murex.vercel.app] - NOTE: Please excuse the long load times, it is due to using free tier of Render API hosting.
 
 ## Documentation Index (Will add, WIP)
 
