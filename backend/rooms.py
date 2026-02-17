@@ -7,17 +7,30 @@ import secrets
 import string
 from typing import Dict, List, Optional, Tuple
 
-from .game_engine import (
-    Card,
-    GamePhase,
-    GameState,
-    JOKER_RANK,
-    JOKER_VARIANTS, 
-    Player,
-    RANKS,
-    SUITS,
-    TurnDirection,
-)
+try:
+    from .game_engine import (
+        Card,
+        GamePhase,
+        GameState,
+        JOKER_RANK,
+        JOKER_VARIANTS,
+        Player,
+        RANKS,
+        SUITS,
+        TurnDirection,
+    )
+except ImportError:  # pragma: no cover - fallback for non-package execution
+    from game_engine import (
+        Card,
+        GamePhase,
+        GameState,
+        JOKER_RANK,
+        JOKER_VARIANTS,
+        Player,
+        RANKS,
+        SUITS,
+        TurnDirection,
+    )
 
 
 ROOM_CODE_ALPHABET = string.ascii_uppercase + string.digits
