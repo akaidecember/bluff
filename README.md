@@ -66,46 +66,6 @@ Optional WebSocket URL override:
 VITE_WS_URL=ws://127.0.0.1:8000/ws npm run dev
 ```
 
-## Deploy Free (Render)
-
-This repo includes a Render blueprint at `render.yaml` that deploys:
-
-- `bluff-backend` (FastAPI WebSocket backend)
-- `bluff-frontend` (Vite static site)
-
-### 1. Push this repo to GitHub
-
-Render deploys from your Git repository, so make sure your latest code is pushed.
-
-### 2. Create services from blueprint
-
-1. In Render, click `New +` -> `Blueprint`.
-2. Connect your GitHub repo.
-3. Render will detect `render.yaml` and create both services.
-
-### 3. Configure frontend WebSocket URL
-
-The frontend must know your backend WebSocket URL.
-
-1. Wait until backend is created and note its URL, for example:
-   `https://bluff-backend.onrender.com`
-2. In Render -> `bluff-frontend` -> `Environment`, set:
-   `VITE_WS_URL=wss://bluff-backend.onrender.com/ws`
-3. Redeploy the frontend service.
-
-You can also use `frontend/.env.example` as reference for this variable.
-
-### 4. Verify deployment
-
-1. Check backend health:
-   `https://<your-backend-host>/health`
-2. Open your frontend URL and create/join a room from two tabs.
-
-### Notes on free tier
-
-- Free web services can sleep after inactivity, so the first connection may take a short time.
-- Room state is in memory, so all rooms reset when the backend restarts.
-
 ## Quick Start (Play Test)
 
 1. Open the frontend in two browser windows or tabs.
