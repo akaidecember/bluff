@@ -11,7 +11,7 @@ This project is currently a **work in progress**.
 
 ## Play Online
 
-Playable link (hosted on Vercel + Render):
+## Playable link (hosted on Vercel + Render):
 
 [https://bluff-murex.vercel.app] - NOTE: Please excuse the long load times, it is due to using free tier of Render API hosting.
 
