@@ -8,6 +8,10 @@
   style="width: 100%; max-width: 900px; height: auto; aspect-ratio: 900 / 590; object-fit: cover;"
 />
 
+## Playable link (hosted on Vercel + Render):
+
+[https://bluff-murex.vercel.app] - NOTE: Please excuse the long load times, it is due to using free tier of Render API hosting.
+
 Bluff is one of my favorite card games to play in real life.
 It’s responsible for many funny, chaotic, and surprisingly intens moments with my roommates or family. You’re constantly guessing, lying confidently, and trying to read other players.
 
@@ -55,10 +59,6 @@ If someone calls bluff, then out of the cards played by the last player, the cal
 (There are multiple variations to this rule, like revealing all the cards on calling bluff, but I feel like this is a better way as it introduces a luck factor in the game.)
 
 The first player to get rid of all their cards wins. The game does not end on one player winning, the game just continues till there is only one player left with cards.
-
-## Playable link (hosted on Vercel + Render):
-
-[https://bluff-murex.vercel.app] - NOTE: Please excuse the long load times, it is due to using free tier of Render API hosting.
 
 ## Documentation Index (Will add, WIP)
 
