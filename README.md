@@ -1,15 +1,60 @@
 # Bluff
 
-<img width="1387" height="909" alt="image" src="https://github.com/user-attachments/assets/48a9ce54-0d40-4aeb-8094-135ba10f84a6" />
+<img
+  width="900"
+  height="590"
+  alt="image"
+  src="https://github.com/user-attachments/assets/48a9ce54-0d40-4aeb-8094-135ba10f84a6"
+  style="width: 100%; max-width: 900px; height: auto; aspect-ratio: 900 / 590; object-fit: cover;"
+/>
 
-Bluff is a multiplayer bluff card game built with:
+Bluff is one of my favorite card games to play in real life.
+It’s responsible for many funny, chaotic, and surprisingly intens moments with my roommates or family. You’re constantly guessing, lying confidently, and trying to read other players.
+
+So I built it online.
+
+This project is a real-time multiplayer version of the classic “Bluff" card game, powered by WebSockets so that every move updates instantly across all players
+
+This is built with:
 
 - Backend: FastAPI + WebSocket
 - Frontend: React + Vite + TypeScript
 
-This project is currently a **work in progress**.
+This project is currently a **work in progress**, although most of the intended functionality is implemented, there might be some uncaught bugs.
 
-## Play Online
+Bluff is simple to learn but very fun to play, here's how it goes.
+
+Ideally 4 players, but the game works with more or fewer. You have the option to select 1 or 2 deck of cards in the room creation screen.
+
+Cards are distributed equally among all players. Players can see their own cards, but	no one can see anyone else’s cards.
+
+The first player starts.
+
+They:
+
+	•	Place one or more cards face down in the middle.
+
+	•	Announce what they’re playing.
+
+For example:
+
+	•	“Three Kings”
+
+	•	“Two Fours”
+
+	•	“One Ace”
+
+In theory, all cards placed in a single turn must be of the same rank, but a player can lie or tell the truth. 
+
+Remember, for a single deck, there are only 4 of each cards. 8 for two decks. So it will be obvious to see who's lying when there are "10 x Aces" on the table. Who's lying?
+
+Other players can play the same called card(s), pass and let it go or call “Bluff”
+
+If someone calls bluff, then out of the cards played by the last player, the caller needs to select a card blindly. If the selected card is a lie, then the other player picks up the pile. But if it is the card the player claimed it to be, then the caller picks up the entire pile. 
+
+(There are multiple variations to this rule, like revealing all the cards on calling bluff, but I feel like this is a better way as it introduces a luck factor in the game.)
+
+The first player to get rid of all their cards wins. The game does not end on one player winning, the game just continues till there is only one player left with cards.
 
 ## Playable link (hosted on Vercel + Render):
 
@@ -29,7 +74,7 @@ This project is currently a **work in progress**.
 - Node.js 18+
 - npm 9+
 
-## Run Locally
+## To run locally, follow the steps below:
 
 ### 1. Backend
 
@@ -42,7 +87,7 @@ pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload --port 8000
 ```
 
-Health check:
+Health check to see if the API is up and running.:
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -64,22 +109,13 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite (default `http://127.0.0.1:5173`).
+Open the URL printed by Vite (by default, it's `http://127.0.0.1:5173`). The UI will open ith the game in the browser.
 
 Optional WebSocket URL override:
 
 ```bash
 VITE_WS_URL=ws://127.0.0.1:8000/ws npm run dev
 ```
-
-## Quick Start (Play Test)
-
-1. Open the frontend in two browser windows or tabs.
-2. In tab A, set player identity and click `Create Room`.
-3. Copy room code from tab A.
-4. In tab B, enter same room code and click `Join Room`.
-5. Host (tab A) clicks `Start Game`.
-6. Play cards, pass, and challenge bluff via `Call`.
 
 ## Dev Simulation (Hidden)
 
@@ -94,19 +130,6 @@ For dev-only WebSocket automation, start the backend with:
 ```bash
 BLUFFER_DEV_MODE=1 uvicorn backend.main:app --reload --port 8000
 ```
-
-## Current Game Behavior Summary
-
-- Players: 2 to 6.
-- Deck count: 1 or 2.
-- Each deck includes 2 jokers (`JKR`, `JKB`).
-- Cards are shuffled and evenly distributed round-robin.
-- Claim rank is locked per round after first claim.
-- Jokers are wildcards when validating bluff.
-- If round starter gets turn again and passes, center pile is discarded from play.
-- Game ranks players by finishing order; last remaining player with cards is loser.
-
-Detailed rules: `docs/GAMEPLAY.md`.
 
 ## Project Layout
 
