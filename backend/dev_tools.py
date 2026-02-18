@@ -8,16 +8,14 @@ from typing import List, Optional
 try:
     from .game_engine import GamePhase, RANKS, TurnDirection
     from .rooms import JoinStatus, MAX_PLAYERS, MIN_PLAYERS, Room, RoomManager
-except ImportError:  # pragma: no cover - fallback for non-package execution
+except ImportError:  # pragma: no cover fallback for non-package execution
     from game_engine import GamePhase, RANKS, TurnDirection
     from rooms import JoinStatus, MAX_PLAYERS, MIN_PLAYERS, Room, RoomManager
 
 DEV_MODE_ENV = "BLUFFER_DEV_MODE"
 
-
 def is_dev_mode() -> bool:
     return os.getenv(DEV_MODE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
-
 
 def seed_room_for_dev(
     room_manager: RoomManager,
@@ -41,7 +39,6 @@ def seed_room_for_dev(
 
     return room
 
-
 @dataclass(frozen=True)
 class DevAction:
     kind: str
@@ -49,7 +46,6 @@ class DevAction:
     card_indices: List[int] = field(default_factory=list)
     claim_rank: Optional[str] = None
     pick_index: Optional[int] = None
-
 
 def choose_dev_action(room: Room, rng: random.Random) -> DevAction:
     state = room.game_state
@@ -76,7 +72,6 @@ def choose_dev_action(room: Room, rng: random.Random) -> DevAction:
         return _make_play_action(player_id, hand, rng, state.round_rank)
 
     return DevAction(kind="pass_turn", player_id=player_id)
-
 
 def apply_dev_action(room: Room, action: DevAction) -> Optional[dict]:
     if action.kind == "play_cards":
@@ -115,7 +110,6 @@ def apply_dev_action(room: Room, action: DevAction) -> Optional[dict]:
 
     raise ValueError(f"unknown dev action {action.kind}")
 
-
 def _validate_player_count(player_count: int) -> int:
 
     if player_count < MIN_PLAYERS or player_count > MAX_PLAYERS:
@@ -123,7 +117,6 @@ def _validate_player_count(player_count: int) -> int:
             f"player_count must be between {MIN_PLAYERS} and {MAX_PLAYERS}"
         )
     return player_count
-
 
 def _make_play_action(
     player_id: str,

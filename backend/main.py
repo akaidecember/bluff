@@ -1,3 +1,5 @@
+"""FastAPI app and WebSocket handler for the Bluff backend."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -19,7 +21,8 @@ try:
     )
     from .game_engine import GamePhase, TurnDirection
     from .rooms import JoinStatus, MIN_PLAYERS, Room, RoomManager
-except ImportError:  # pragma: no cover - fallback for non-package execution
+
+except ImportError: 
     from dev_tools import (
         DEV_MODE_ENV,
         apply_dev_action,
@@ -33,6 +36,7 @@ except ImportError:  # pragma: no cover - fallback for non-package execution
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bluffer.backend")
 app = FastAPI(title="Bluffer Backend")
+
 DEV_MODE = is_dev_mode()
 
 if DEV_MODE:
@@ -40,14 +44,38 @@ if DEV_MODE:
 
 @dataclass
 class ConnectionManager:
-    active_connections: Set[WebSocket] = field(default_factory=set)
+    """Tracks active WebSocket connections and connect/disconnect handling."""
+
+    active_connections: Set[WebSocket] = field(default_factory = set)
 
     async def connect(self, websocket: WebSocket) -> None:
+        """Accept and register a WebSocket connection.
+
+        Args:
+            websocket: Incoming WebSocket connection.
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+        """
         await websocket.accept()
         self.active_connections.add(websocket)
         logger.info("client connected (%s active)", len(self.active_connections))
 
     async def disconnect(self, websocket: WebSocket) -> None:
+        """Unregister a WebSocket connection.
+
+        Args:
+            websocket: WebSocket connection to remove.
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+        """
         self.active_connections.discard(websocket)
         logger.info("client disconnected (%s active)", len(self.active_connections))
 
@@ -60,10 +88,32 @@ dev_autoplay_tasks: Dict[str, asyncio.Task] = {}
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """Health check endpoint.
+
+    Args:
+        None.
+
+    Returns:
+        JSON dict indicating service status.
+
+    Raises:
+        None.
+    """
     return {"status": "ok"}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
+    """Handle WebSocket messages for room and gameplay actions.
+
+    Args:
+        websocket: Client WebSocket connection.
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+    """
     await manager.connect(websocket)
     try:
         while True:
@@ -442,10 +492,33 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             room_connections.get(room_code, set()).discard(websocket)
 
 async def _broadcast_room(room_code: str, message: dict) -> None:
+    """Broadcast a message to all connections in a room.
+
+    Args:
+        room_code: Room identifier.
+        message: JSON-serializable payload.
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+    """
     for socket in room_connections.get(room_code, set()):
         await socket.send_json(message)
 
 async def _send_public_state(room_code: str) -> None:
+    """Send the public room state to all room connections.
+
+    Args:
+        room_code: Room identifier.
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+    """
     room = room_manager.rooms.get(room_code)
     if room is None:
         return
@@ -453,6 +526,17 @@ async def _send_public_state(room_code: str) -> None:
     await _broadcast_room(room_code, {"type": "public_state", "state": state})
 
 async def _send_private_state(room_code: str) -> None:
+    """Send per-player private state (hands) to each connection.
+
+    Args:
+        room_code: Room identifier.
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+    """
     room = room_manager.rooms.get(room_code)
 
     if room is None:
@@ -483,7 +567,20 @@ async def _send_private_state(room_code: str) -> None:
 async def _run_dev_autoplay(
     room_code: str, delay_ms: int, max_steps: int, seed: object
 ) -> None:
-    
+    """Run automated gameplay actions for dev/test usage.
+
+    Args:
+        room_code: Room identifier to autoplay.
+        delay_ms: Milliseconds to wait between steps.
+        max_steps: Maximum number of actions to take.
+        seed: Optional RNG seed.
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+    """
     room = room_manager.rooms.get(room_code)
 
     if room is None:
@@ -550,6 +647,17 @@ async def _run_dev_autoplay(
     )
 
 def _public_state(room: Room) -> dict:
+    """Build the public view of the room/game state.
+
+    Args:
+        room: Room instance to serialize.
+
+    Returns:
+        JSON-serializable dict for public state.
+
+    Raises:
+        None.
+    """
     last_claim = None
 
     if room.game_state.last_claim is not None:

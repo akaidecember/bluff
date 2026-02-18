@@ -1,3 +1,5 @@
+"""Core rules and state machine for the Bluff card game."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -6,6 +8,8 @@ from typing import Dict, List, Optional
 
 
 class GamePhase(str, Enum):
+    """High-level phases of a game round."""
+
     WAITING_FOR_PLAYERS = "WAITING_FOR_PLAYERS"
     DEALING = "DEALING"
     PLAYER_TURN = "PLAYER_TURN"
@@ -14,6 +18,8 @@ class GamePhase(str, Enum):
 
 
 class TurnDirection(str, Enum):
+    """Turn order direction."""
+
     CLOCKWISE = "CLOCKWISE"
     COUNTERCLOCKWISE = "COUNTERCLOCKWISE"
 
@@ -22,6 +28,10 @@ RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 SUITS = ["S", "H", "D", "C"]
 
 JOKER_RANK = "JK"
+
+# Added joker variants, but not used, both variants are same
+# In future, will add option ot make red and black jokers act differently
+# Maybe come up with a new idea.
 JOKER_VARIANTS = ["R", "B"]
 
 _SORT_RANKS = RANKS + [JOKER_RANK]
@@ -30,27 +40,46 @@ _SUIT_ORDER = {suit: index for index, suit in enumerate(["C", "D", "H", "S", "R"
 
 @dataclass(frozen=True)
 class Card:
+    """A single playing card, tagged by deck in multi-deck games."""
+
     rank: str
     suit: str
     deck: int
 
     def code(self) -> str:
+        """Return a compact identifier like 'AS' or '10H'.
+
+        Args:
+            None.
+
+        Returns:
+            Card code string.
+
+        Raises:
+            None.
+        """
         return f"{self.rank}{self.suit}"
 
 @dataclass
 class Player:
+    """A player and their current hand."""
+
     player_id: str
     display_name: str
     hand: List[Card] = field(default_factory = list)
 
 @dataclass
 class Claim:
+    """A declared rank and count for the most recent play."""
+
     player_id: str
     rank: str
     count: int
 
 @dataclass
 class ChallengeOutcome:
+    """Resolved result of a bluff challenge."""
+
     claimant_id: str
     challenger_id: str
     penalty_player_id: str
@@ -59,6 +88,8 @@ class ChallengeOutcome:
 
 @dataclass
 class GameState:
+    """Mutable state for an active game, including turn and pile data."""
+
     phase: GamePhase = GamePhase.WAITING_FOR_PLAYERS
     players: Dict[str, Player] = field(default_factory = dict)
     turn_order: List[str] = field(default_factory = list)
@@ -74,17 +105,50 @@ class GameState:
     round_starter_id: Optional[str] = None
 
     def _require_phase(self, *allowed: GamePhase) -> None:
+        """Validate the game is in one of the allowed phases.
+
+        Args:
+            *allowed: Acceptable phases for the current action.
+
+        Returns:
+            None.
+
+        Raises:
+            ValueError: If the current phase is not allowed.
+        """
         if self.phase not in allowed:
             allowed_names = ", ".join(p.value for p in allowed)
             raise ValueError(f"invalid phase {self.phase.value}; expected {allowed_names}")
 
     def _direction_step(self) -> int:
+        """Return +1 or -1 based on current turn direction.
+
+        Args:
+            None.
+
+        Returns:
+            Step value to apply when advancing the turn index.
+
+        Raises:
+            None.
+        """
         if self.direction == TurnDirection.CLOCKWISE:
             return 1
         else:
             return -1
 
     def add_player(self, player: Player) -> None:
+        """Register a player before the game starts.
+
+        Args:
+            player: Player instance to register.
+
+        Returns:
+            None.
+
+        Raises:
+            ValueError: If the player is already registered.
+        """
         self._require_phase(GamePhase.WAITING_FOR_PLAYERS)
 
         if player.player_id in self.players:
@@ -93,6 +157,18 @@ class GameState:
         self.players[player.player_id] = player
 
     def start_game(self, turn_order: List[str], direction: TurnDirection) -> None:
+        """Initialize turn order and transition into the dealing phase.
+
+        Args:
+            turn_order: Ordered list of player IDs.
+            direction: Initial turn direction.
+
+        Returns:
+            None.
+
+        Raises:
+            ValueError: If fewer than two players are provided or unknown players exist.
+        """
         self._require_phase(GamePhase.WAITING_FOR_PLAYERS)
 
         if len(turn_order) < 2:
@@ -109,6 +185,17 @@ class GameState:
         self.phase = GamePhase.DEALING
 
     def set_dealt_hands(self, hands: Dict[str, List[Card]]) -> None:
+        """Assign dealt hands and move into the first turn.
+
+        Args:
+            hands: Mapping of player IDs to their dealt cards.
+
+        Returns:
+            None.
+
+        Raises:
+            ValueError: If any player in turn_order has no dealt hand.
+        """
         self._require_phase(GamePhase.DEALING)
 
         for player_id in self.turn_order:
@@ -119,12 +206,36 @@ class GameState:
         self.phase = GamePhase.PLAYER_TURN
 
     def current_player_id(self) -> str:
+        """Return the player whose turn it currently is.
+
+        Args:
+            None.
+
+        Returns:
+            Player ID string for the active turn.
+
+        Raises:
+            ValueError: If there is no active player in the current phase.
+        """
         if self.phase not in {GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE}:
             raise ValueError(f"no active player in phase {self.phase.value}")
         
         return self.turn_order[self.current_turn_index]
 
     def play_cards(self, player_id: str, card_indices: List[int], claim_rank: str) -> None:
+        """Play cards from a hand and record a claim for the round.
+
+        Args:
+            player_id: Acting player ID.
+            card_indices: Indices of cards in the player's hand to play.
+            claim_rank: Declared rank for the played cards.
+
+        Returns:
+            None.
+
+        Raises:
+            ValueError: If the play is invalid (phase, turn, claim, or indices).
+        """
         self._require_phase(GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE)
 
         if player_id != self.current_player_id():
@@ -168,6 +279,17 @@ class GameState:
         self._advance_turn()
 
     def pass_turn(self, player_id: str) -> bool:
+        """Pass the turn; returns True if the pile was discarded.
+
+        Args:
+            player_id: Acting player ID.
+
+        Returns:
+            True if the pile was discarded by the round starter.
+
+        Raises:
+            ValueError: If the pass is made out of turn or in an invalid phase.
+        """
         self._require_phase(GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE)
 
         if player_id != self.current_player_id():
@@ -185,6 +307,18 @@ class GameState:
         return discarded
 
     def call_bluff(self, challenger_id: str, pick_index: int) -> ChallengeOutcome:
+        """Challenge the last claim and resolve the penalty.
+
+        Args:
+            challenger_id: Player ID calling bluff.
+            pick_index: Index of card to pick from last played cards.
+
+        Returns:
+            ChallengeOutcome describing the resolved challenge.
+
+        Raises:
+            ValueError: If the challenge is invalid (phase, turn, or indices).
+        """
         self._require_phase(GamePhase.CLAIM_MADE)
 
         if challenger_id != self.current_player_id():
@@ -231,6 +365,17 @@ class GameState:
         return outcome
 
     def _clear_round(self, discard: bool) -> None:
+        """Reset round-specific state; optionally discard the pile.
+
+        Args:
+            discard: Whether to move the pile into the discard pile.
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+        """
         if discard and self.pile:
             self.discard_pile.extend(self.pile)
 
@@ -242,6 +387,17 @@ class GameState:
         self.phase = GamePhase.PLAYER_TURN
 
     def _advance_turn(self) -> None:
+        """Move the turn index to the next eligible player.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            ValueError: If the turn order has not been initialized.
+        """
         if not self.turn_order:
             raise ValueError("turn order not set")
         
@@ -260,6 +416,17 @@ class GameState:
         self.phase = GamePhase.GAME_OVER
 
     def _update_finished(self) -> None:
+        """Update finished order and detect game-over conditions.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+        """
         for player_id in self.turn_order:
             if player_id in self.finished_order:
                 continue
@@ -292,6 +459,17 @@ class GameState:
             self.phase = GamePhase.GAME_OVER
 
     def standings(self) -> List[str]:
+        """Return final standings with the loser last (if any).
+
+        Args:
+            None.
+
+        Returns:
+            Ordered list of player IDs.
+
+        Raises:
+            None.
+        """
         results = list(self.finished_order)
 
         if self.loser_id is not None:
@@ -299,8 +477,18 @@ class GameState:
 
         return results
 
-
 def sort_cards(cards: List[Card]) -> List[Card]:
+    """Return cards sorted by rank, suit, and deck.
+
+    Args:
+        cards: List of cards to sort.
+
+    Returns:
+        New list of sorted cards.
+
+    Raises:
+        None.
+    """
     return sorted(cards,
         key=lambda card: (
             _RANK_ORDER.get(card.rank, len(_RANK_ORDER)),
