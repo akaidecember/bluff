@@ -8,9 +8,7 @@
   style="width: 100%; max-width: 900px; height: auto; aspect-ratio: 900 / 590; object-fit: cover;"
 />
 
-## Playable link (hosted on Vercel + Render):
-
-[https://bluff-murex.vercel.app] - NOTE: Please excuse the long load times, it is due to using free tier of Render API hosting.
+#### Playable link (hosted on Vercel + Render): [https://bluff-murex.vercel.app] - NOTE: Please excuse the long load times, it is due to using free tier of Render API hosting.
 
 Bluff is one of my favorite card games to play in real life.
 It’s responsible for many funny, chaotic, and surprisingly intens moments with my roommates or family. You’re constantly guessing, lying confidently, and trying to read other players.
