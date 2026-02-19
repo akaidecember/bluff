@@ -7,6 +7,10 @@ const statusLabels: Record<ConnectionStatus, string> = {
   error: "Error",
 };
 
+const statusSubtext: Partial<Record<ConnectionStatus, string>> = {
+  connecting: "Waiting for the server instance to spin up...",
+};
+
 type ConnectionStatusProps = {
   status: ConnectionStatus;
 };
@@ -15,8 +19,15 @@ export default function ConnectionStatusBadge({
   status,
 }: ConnectionStatusProps) {
   return (
-    <p className={`connection-pill ${status}`}>
-      Connection: <strong>{statusLabels[status]}</strong>
-    </p>
+    <div className={`connection-pill ${status}`} aria-live="polite">
+      <div className="connection-main">
+        <span className={`status-indicator ${status}`} aria-hidden="true" />
+        <span>Connection:</span>
+        <strong>{statusLabels[status]}</strong>
+      </div>
+      {statusSubtext[status] && (
+        <div className="connection-subtext">{statusSubtext[status]}</div>
+      )}
+    </div>
   );
 }

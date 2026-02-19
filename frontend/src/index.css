@@ -98,6 +98,48 @@ button:disabled {
   border: 1px solid #bdd3ff;
   background: rgba(255, 255, 255, 0.84);
   font-size: 0.92rem;
+  display: grid;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.connection-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.status-indicator {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: #9bb0d8;
+  display: inline-block;
+}
+
+.status-indicator.connected {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(20, 108, 67, 0.16);
+}
+
+.status-indicator.disconnected,
+.status-indicator.error {
+  background: var(--bad);
+  box-shadow: 0 0 0 3px rgba(164, 25, 56, 0.16);
+}
+
+.status-indicator.connecting {
+  background: transparent;
+  border: 2px solid #a6b7d6;
+  border-top-color: #2f6fed;
+  animation: statusSpin 0.9s linear infinite;
+}
+
+.connection-subtext {
+  font-size: 0.76rem;
+  color: #4c5c7a;
+  padding-left: 1.42rem;
 }
 
 .connection-pill.connected {
@@ -109,6 +151,12 @@ button:disabled {
 .connection-pill.disconnected {
   border-color: #efb7c5;
   color: var(--bad);
+}
+
+@keyframes statusSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .message-stack {
