@@ -6,6 +6,7 @@ import ConnectionStatusBadge from "./components/ConnectionStatus";
 import Landing from "./pages/Landing";
 import GamePage from "./pages/Game";
 import LobbyPage from "./pages/Lobby";
+import WorkInProgress from "./pages/WorkInProgress";
 import { WebSocketClient, type ConnectionStatus } from "./lib/ws";
 import type { PrivateState, PublicState, ServerMessage } from "./types/messages";
 
@@ -49,6 +50,7 @@ export default function App() {
       if (message.type === "game_started") {
         navigate("/game", { replace: false });
         setLastEvent("Game started.");
+        client.send({ type: "sync_state", room_code: message.room_code, player_id: playerId });
       }
       if (message.type === "challenge_resolved") {
         const resultText = message.picked_matches_claim
@@ -70,7 +72,7 @@ export default function App() {
       unsubscribeMessages();
       client.close();
     };
-  }, [client, navigate]);
+  }, [client, navigate, playerId]);
 
   useEffect(() => {
     if (publicState && publicState.phase !== "WAITING_FOR_PLAYERS" && location.pathname !== "/game") {
@@ -123,6 +125,9 @@ export default function App() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Landing />} />
+        <Route path="/how" element={<WorkInProgress />} />
+        <Route path="/privacy" element={<WorkInProgress />} />
+        <Route path="/credits" element={<WorkInProgress />} />
         <Route
           path="/lobby"
           element={shell(

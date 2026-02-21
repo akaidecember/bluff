@@ -32,6 +32,11 @@
   color: #f7f2e4;
 }
 
+.lobby-brand {
+  cursor: pointer;
+  display: inline-block;
+}
+
 .lobby-hero p {
   opacity: 0.85;
   color: rgba(247, 242, 228, 0.9);

@@ -133,7 +133,7 @@ export default function Lobby({
     <main className="screen lobby-screen">
       <section className="lobby-frame">
         <div className="hero">
-          <h1>Bluffer</h1>
+          <h1>BLUFF</h1>
           <p>Can you get away with it?</p>
           <small>Host picks deck count and direction. Game supports 2 to 6 players.</small>
         </div>

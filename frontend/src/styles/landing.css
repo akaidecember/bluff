@@ -95,20 +95,22 @@
   text-align: center;
   padding: 0 18px;
   z-index: 1;
+  gap: 24px;
 }
 
 .landing-title {
-  font-size: clamp(54px, 7vw, 88px);
+  font-size: clamp(72px, 9vw, 110px);
+  font-weight: 800;
   font-family: "Fredoka", sans-serif;
-  font-weight: 700;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
   text-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
 }
 
 .landing-subtitle {
-  margin-top: 10px;
-  opacity: 0.9;
-  font-size: 18px;
+  margin-top: 18px;
+  opacity: 0.95;
+  font-size: clamp(22px, 2.2vw, 28px);
+  color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
@@ -122,10 +124,12 @@
 
 .cta {
   border-radius: 16px;
-  padding: 14px 18px;
+  padding: 18px 26px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: 0.5px;
   border: none;
+  min-width: 220px;
 }
 
 .cta.primary {
@@ -141,8 +145,9 @@
 }
 
 .landing-note {
-  margin-top: 14px;
-  opacity: 0.75;
+  margin-top: 20px;
+  opacity: 0.85;
+  font-size: 18px;
 }
 
 .landing-footer {

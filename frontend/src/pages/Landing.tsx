@@ -19,7 +19,7 @@ export default function Landing() {
       <div className="landing-vignette" aria-hidden="true" />
 
       <header className="landing-top">
-        <div className="brand-mini">Bluffer</div>
+        <div className="brand-mini">BLUFF</div>
         <nav className="top-actions">
           <button type="button" className="ghost" onClick={() => navigate("/how")} aria-label="How to play">
             How to play
@@ -42,7 +42,7 @@ export default function Landing() {
           transition={{ type: "spring", stiffness: 120, damping: 14 }}
           className="landing-title"
         >
-          BLUFFER
+          BLUFF
         </motion.h1>
 
         <motion.p
@@ -69,31 +69,11 @@ export default function Landing() {
           >
             Play
           </motion.button>
-          <motion.button
-            className="cta secondary"
-            onClick={() => navigate("/lobby?mode=friends")}
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            aria-label="Play with friends"
-          >
-            Play with friends
-          </motion.button>
         </motion.div>
 
         <div className="landing-note">Quick rounds. 2-6 players. Pure bluff.</div>
       </main>
 
-      <footer className="landing-footer">
-        <span>(c) Bluffer</span>
-        <span className="dot">|</span>
-        <button type="button" className="linkish" onClick={() => navigate("/privacy")} aria-label="Privacy">
-          Privacy
-        </button>
-        <span className="dot">|</span>
-        <button type="button" className="linkish" onClick={() => navigate("/credits")} aria-label="Credits">
-          Credits
-        </button>
-      </footer>
     </motion.div>
   );
 }

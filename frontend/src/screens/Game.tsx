@@ -192,6 +192,7 @@ export default function Game({
   lastChallenge,
   onSend,
 }: GameProps) {
+  const lastSyncRoomRef = useRef<string | null>(null);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [claimRank, setClaimRank] = useState("");
   const [pickIndex, setPickIndex] = useState(0);
@@ -240,6 +241,17 @@ export default function Game({
   const standings = publicState?.standings ?? [];
   const placing = standings.findIndex((player) => player === playerId) + 1;
   const isLoser = publicState?.loser_id === playerId;
+
+  useEffect(() => {
+    if (!roomCode || !playerId) {
+      return;
+    }
+    if (lastSyncRoomRef.current === roomCode) {
+      return;
+    }
+    onSend({ type: "sync_state", room_code: roomCode, player_id: playerId });
+    lastSyncRoomRef.current = roomCode;
+  }, [roomCode, playerId, onSend]);
 
   const seats = useMemo(
     () =>
@@ -683,6 +695,17 @@ export default function Game({
               );
             })}
           </ol>
+        </section>
+      </main>
+    );
+  }
+
+  if (phase === "WAITING_FOR_PLAYERS" || phase === "DEALING") {
+    return (
+      <main className="screen game-table-screen">
+        <section className="panel result-panel">
+          <h1>Dealing cards...</h1>
+          <p>Hang tight while we shuffle the deck.</p>
         </section>
       </main>
     );

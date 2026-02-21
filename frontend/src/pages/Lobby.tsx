@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { GameSetupChips } from "../components/GameSetupChips";
 import { PlayerPills } from "../components/PlayerPills";
@@ -48,6 +48,7 @@ export default function Lobby({
   onSend,
 }: LobbyProps) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastTimeoutsRef = useRef(new Map<string, number>());
   const seenPlayersRef = useRef(new Set<string>());
@@ -190,7 +191,21 @@ export default function Lobby({
 
       <motion.div className="lobby-shell" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <div className="lobby-hero">
-          <h1>BLUFFER</h1>
+          <h1
+            className="lobby-brand"
+            onClick={() => navigate("/")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                navigate("/");
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Back to home"
+          >
+            BLUFF
+          </h1>
           <p>Can you get away with it?</p>
         </div>
 
@@ -267,42 +282,58 @@ export default function Lobby({
                   >
                     {direction === "CLOCKWISE" ? (
                       <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          d="M7 6.5h6.2a4.8 4.8 0 1 1 0 9.6H9.5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M7 6.5 4.5 4M7 6.5 4.5 9"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          d="M17 6.5H10.8a4.8 4.8 0 1 0 0 9.6H14.5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M17 6.5 19.5 4M17 6.5 19.5 9"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </motion.span>
+                      <path
+                        d="M7 6.5h6.2a4.8 4.8 0 1 1 0 9.6H9.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M7 6.5 4.5 4M7 6.5 4.5 9"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M9.5 16.1 12 14.3M9.5 16.1 12 17.9"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M17 6.5H10.8a4.8 4.8 0 1 0 0 9.6H14.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M17 6.5 19.5 4M17 6.5 19.5 9"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M14.5 16.1 12 14.3M14.5 16.1 12 17.9"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </motion.span>
                   <motion.span
                     key={direction}
                     className="direction-label"

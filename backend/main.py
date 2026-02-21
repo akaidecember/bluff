@@ -299,6 +299,37 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 await _send_private_state(room_code)
                 continue
 
+            if message_type == "sync_state":
+                room_code = payload.get("room_code")
+                player_id = payload.get("player_id")
+
+                if not room_code or not player_id:
+                    await websocket.send_json(
+                        {"type": "error", "message": "room_code and player_id required"}
+                    )
+                    continue
+
+                room = room_manager.rooms.get(room_code)
+                if room is None:
+                    await websocket.send_json(
+                        {"type": "room_not_found", "room_code": room_code}
+                    )
+                    continue
+
+                if player_id not in room.players:
+                    await websocket.send_json(
+                        {"type": "invalid_action", "message": "player not in room"}
+                    )
+                    continue
+
+                room_connections.setdefault(room_code, set()).add(websocket)
+                connection_rooms[websocket] = room_code
+                connection_players[websocket] = player_id
+
+                await _send_public_state(room_code)
+                await _send_private_state(room_code)
+                continue
+
             if message_type == "start_game":
                 room_code = payload.get("room_code")
                 player_id = payload.get("player_id")
