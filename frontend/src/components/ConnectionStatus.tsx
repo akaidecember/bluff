@@ -8,22 +8,29 @@ const statusLabels: Record<ConnectionStatus, string> = {
 };
 
 const statusSubtext: Partial<Record<ConnectionStatus, string>> = {
-  connecting: "Waiting for the server instance to spin up...",
+  connecting: "Warming up server...",
+  disconnected: "Connection lost.",
+  error: "Unable to reach server.",
 };
 
 type ConnectionStatusProps = {
   status: ConnectionStatus;
+  onRetry?: () => void;
 };
 
-export default function ConnectionStatusBadge({
-  status,
-}: ConnectionStatusProps) {
+export default function ConnectionStatusBadge({ status, onRetry }: ConnectionStatusProps) {
+  const showRetry = (status === "disconnected" || status === "error") && onRetry;
   return (
     <div className={`connection-pill ${status}`} aria-live="polite">
       <div className="connection-main">
         <span className={`status-indicator ${status}`} aria-hidden="true" />
         <span>Connection:</span>
         <strong>{statusLabels[status]}</strong>
+        {showRetry && (
+          <button type="button" className="connection-retry" onClick={onRetry} aria-label="Retry connection">
+            Retry
+          </button>
+        )}
       </div>
       {statusSubtext[status] && (
         <div className="connection-subtext">{statusSubtext[status]}</div>

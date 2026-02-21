@@ -1,21 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import ConnectionStatusBadge from "./components/ConnectionStatus";
+import Landing from "./pages/Landing";
+import GamePage from "./pages/Game";
+import LobbyPage from "./pages/Lobby";
 import { WebSocketClient, type ConnectionStatus } from "./lib/ws";
-import Game from "./screens/Game";
-import Lobby from "./screens/Lobby";
 import type { PrivateState, PublicState, ServerMessage } from "./types/messages";
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
 //Insert own IP addr. for local hosted within the same wifi addr.
 //const WS_URL = "ws://<IP_ADDR>/ws";
 
-type Screen = "lobby" | "game"; 
 type ChallengeResolvedMessage = Extract<ServerMessage, { type: "challenge_resolved" }>;
 
 export default function App() {
   const client = useMemo(() => new WebSocketClient(), []);
-  const [screen, setScreen] = useState<Screen>("lobby");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [playerId, setPlayerId] = useState("player-1");
   const [displayName, setDisplayName] = useState("Player One");
@@ -41,10 +44,10 @@ export default function App() {
       }
       if (message.type === "room_created" || message.type === "room_joined" || message.type === "room_already_joined") {
         setRoomCode(message.room_code);
-        setScreen("lobby");
+        navigate("/lobby", { replace: false });
       }
       if (message.type === "game_started") {
-        setScreen("game");
+        navigate("/game", { replace: false });
         setLastEvent("Game started.");
       }
       if (message.type === "challenge_resolved") {
@@ -67,13 +70,13 @@ export default function App() {
       unsubscribeMessages();
       client.close();
     };
-  }, [client]);
+  }, [client, navigate]);
 
   useEffect(() => {
-    if (publicState && publicState.phase !== "WAITING_FOR_PLAYERS") {
-      setScreen("game");
+    if (publicState && publicState.phase !== "WAITING_FOR_PLAYERS" && location.pathname !== "/game") {
+      navigate("/game", { replace: false });
     }
-  }, [publicState]);
+  }, [publicState, navigate, location.pathname]);
 
   useEffect(() => {
     if (!lastChallenge) {
@@ -92,41 +95,68 @@ export default function App() {
     };
   }, [lastChallenge]);
 
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <ConnectionStatusBadge status={status} />
-        <div className="message-stack">
-          {lastError && <p className="banner error">Server: {lastError}</p>}
-          {lastEvent && <p className="banner info">Event: {lastEvent}</p>}
-        </div>
-      </header>
+  const activeRoomCode = publicState?.room_code ?? roomCode;
 
-      {screen === "lobby" ? (
-        <Lobby
-          playerId={playerId}
-          displayName={displayName}
-          roomCode={roomCode}
-          deckCount={deckCount}
-          direction={direction}
-          publicState={publicState}
-          onChangePlayerId={setPlayerId}
-          onChangeDisplayName={setDisplayName}
-          onChangeRoomCode={setRoomCode}
-          onChangeDeckCount={setDeckCount}
-          onChangeDirection={setDirection}
-          onSend={(message) => client.send(message)}
+  const shell = (child: ReactNode) => (
+    <>
+      <div className="felt-overlay" aria-hidden="true" />
+      <div className="app-shell">
+        <header className="app-header">
+          <ConnectionStatusBadge
+            status={status}
+            onRetry={() => {
+              setLastError(null);
+              client.connect(WS_URL);
+            }}
+          />
+          <div className="message-stack">
+            {lastError && <p className="banner error">Server: {lastError}</p>}
+            {lastEvent && <p className="banner info">Event: {lastEvent}</p>}
+          </div>
+        </header>
+        {child}
+      </div>
+    </>
+  );
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<Landing />} />
+        <Route
+          path="/lobby"
+          element={shell(
+            <LobbyPage
+              playerId={playerId}
+              displayName={displayName}
+              roomCode={roomCode}
+              deckCount={deckCount}
+              direction={direction}
+              publicState={publicState}
+              onChangePlayerId={setPlayerId}
+              onChangeDisplayName={setDisplayName}
+              onChangeRoomCode={setRoomCode}
+              onChangeDeckCount={setDeckCount}
+              onChangeDirection={setDirection}
+              onSend={(message) => client.send(message)}
+            />
+          )}
         />
-      ) : (
-        <Game
-          playerId={playerId}
-          roomCode={roomCode}
-          publicState={publicState}
-          privateState={privateState}
-          lastChallenge={lastChallenge}
-          onSend={(message) => client.send(message)}
+        <Route
+          path="/game"
+          element={shell(
+            <GamePage
+              playerId={playerId}
+              roomCode={activeRoomCode}
+              publicState={publicState}
+              privateState={privateState}
+              lastChallenge={lastChallenge}
+              onSend={(message) => client.send(message)}
+            />
+          )}
         />
-      )}
-    </div>
+        <Route path="*" element={<Landing />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
