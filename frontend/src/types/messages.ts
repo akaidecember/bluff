@@ -71,6 +71,7 @@ export type ClientMessage =
       display_name: string;
     }
   | { type: "start_game"; room_code: string; player_id: string }
+  | { type: "sync_state"; room_code: string; player_id: string }
   | {
       type: "play_cards";
       room_code: string;
