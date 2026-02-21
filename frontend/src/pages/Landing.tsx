@@ -15,11 +15,14 @@ export default function Landing() {
       transition={{ duration: 0.25 }}
     >
       <div className="landing-bg" aria-hidden="true" />
-      <div className="landing-cards" aria-hidden="true" />
+      <div className="landing-cards" aria-hidden="true">
+        <img className="landing-joker left" src="/cards/JKR.svg" alt="" />
+        <img className="landing-joker right" src="/cards/JKB.svg" alt="" />
+      </div>
       <div className="landing-vignette" aria-hidden="true" />
 
       <header className="landing-top">
-        <div className="brand-mini">BLUFF</div>
+        <div />
         <nav className="top-actions">
           <button type="button" className="ghost" onClick={() => navigate("/how")} aria-label="How to play">
             How to play
@@ -71,7 +74,7 @@ export default function Landing() {
           </motion.button>
         </motion.div>
 
-        <div className="landing-note">Quick rounds. 2-6 players. Pure bluff.</div>
+        <div className="landing-note">2-6 players. Catch their lies, destroy friendships.</div>
       </main>
 
     </motion.div>

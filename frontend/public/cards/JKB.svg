@@ -1,16 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 340" role="img" aria-label="JKB">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 340" role="img" aria-label="Joker card (shadow)">
   <defs>
-    <linearGradient id="jokerFace" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fff6f3"/>
-      <stop offset="100%" stop-color="#eef5ff"/>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#faf6ef"/>
+      <stop offset="1" stop-color="#f1eadf"/>
     </linearGradient>
+
+    <linearGradient id="shadowAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b213a"/>
+      <stop offset="1" stop-color="#1e3a8a"/>
+    </linearGradient>
+
+    <radialGradient id="coolGlow" cx="50%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#60a5fa" stop-opacity="0.18"/>
+      <stop offset="0.6" stop-color="#60a5fa" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
   </defs>
-  <rect x="5" y="5" width="230" height="330" rx="22" fill="url(#jokerFace)" stroke="#273758" stroke-width="5"/>
-  <text x="24" y="48" font-size="30" font-family="Trebuchet MS, sans-serif" fill="#1b2845" font-weight="700">JK</text>
-  <path d="M70 160 L120 108 L170 160 L145 160 L145 195 L95 195 L95 160 Z" fill="#1b2845" opacity="0.85"/>
-  <circle cx="95" cy="202" r="8" fill="#1b2845"/>
-  <circle cx="120" cy="210" r="8" fill="#1b2845"/>
-  <circle cx="145" cy="202" r="8" fill="#1b2845"/>
-  <text x="120" y="260" text-anchor="middle" font-size="32" font-family="Trebuchet MS, sans-serif" fill="#1b2845" font-weight="700">JOKER</text>
-  <text x="214" y="318" text-anchor="end" font-size="30" font-family="Trebuchet MS, sans-serif" fill="#1b2845" font-weight="700">JK</text>
+
+  <rect x="5" y="5" width="230" height="330" rx="22" fill="url(#paper)" filter="url(#softShadow)"/>
+  <rect x="5" y="5" width="230" height="330" rx="22" fill="none" stroke="#0b213a" stroke-width="5"/>
+
+  <g fill="#0b213a" font-family="ui-sans-serif, system-ui, -apple-system" font-weight="900">
+    <text x="26" y="50" font-size="22">J</text>
+    <text x="214" y="318" font-size="22" text-anchor="end">J</text>
+  </g>
+
+  <g transform="translate(120 170)">
+    <circle r="78" fill="url(#coolGlow)"/>
+
+    <circle r="62" fill="none" stroke="#0b213a" stroke-opacity="0.14" stroke-width="2"/>
+    <circle r="54" fill="none" stroke="#0b213a" stroke-opacity="0.10" stroke-width="2"/>
+
+    <g opacity="0.14" fill="#0b213a">
+      <path d="M0 -64 C-10 -76 -28 -70 -28 -54 C-28 -40 -10 -28 0 -14 C10 -28 28 -40 28 -54 C28 -70 10 -76 0 -64Z"/>
+      <path d="M-64 0 C-76 -10 -70 -28 -54 -28 C-40 -28 -28 -10 -14 0 C-28 10 -40 28 -54 28 C-70 28 -76 10 -64 0Z"/>
+      <path d="M64 0 C76 -10 70 -28 54 -28 C40 -28 28 -10 14 0 C28 10 40 28 54 28 C70 28 76 10 64 0Z"/>
+    </g>
+
+    <path d="M-52 -6
+             C-44 -40, -10 -50, 0 -26
+             C 10 -50, 44 -40, 52 -6
+             C 38 20, 18 36, 0 36
+             C -18 36, -38 20, -52 -6Z"
+          fill="url(#shadowAccent)" opacity="0.95"/>
+
+    <path d="M-32 -4 C-20 -20, -6 -20, 2 -10 C-6 0, -20 2, -32 -4Z" fill="#fbfbfb" opacity="0.95"/>
+    <path d="M32 -4 C20 -20, 6 -20, -2 -10 C6 0, 20 2, 32 -4Z" fill="#fbfbfb" opacity="0.95"/>
+
+    <text x="0" y="62" text-anchor="middle"
+          font-family="ui-sans-serif, system-ui"
+          font-size="14" font-weight="900" letter-spacing="3"
+          fill="#0b213a" opacity="0.85">JOKER</text>
+  </g>
+
+  <text x="120" y="286" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui"
+        font-size="12" font-weight="800" letter-spacing="2"
+        fill="#0b213a" opacity="0.70">WILD CARD</text>
 </svg>

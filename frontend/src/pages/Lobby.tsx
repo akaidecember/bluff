@@ -221,7 +221,7 @@ export default function Lobby({
               }))}
             />
             {publicState && players.length <= 1 && (
-              <div className="empty-state">Invite friends with the link above.</div>
+              <div className="empty-state">Share the room code with your friends for them to join the room.</div>
             )}
             <GameSetupChips decksLabel={deckLabel} directionLabel={directionLabel} />
           </motion.div>

@@ -9,7 +9,7 @@ const statusLabels: Record<ConnectionStatus, string> = {
 
 const statusSubtext: Partial<Record<ConnectionStatus, string>> = {
   connecting: "Warming up server...",
-  disconnected: "Connection lost.",
+  disconnected: "Waking up the server...",
   error: "Unable to reach server.",
 };
 
