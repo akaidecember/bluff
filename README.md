@@ -9,7 +9,7 @@
 />
 
 #### Playable link (hosted on Vercel + Render):  
-👉 https://bluff-murex.vercel.app  
+ >>> https://bluff-murex.vercel.app  
 
 > **Note:** Please excuse the long load times — this is running on the free tier of Render for API hosting.
 
