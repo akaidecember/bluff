@@ -8,8 +8,7 @@
   style="width: 100%; max-width: 900px; height: auto; aspect-ratio: 900 / 590; object-fit: cover;"
 />
 
-#### Playable link (hosted on Vercel + Render):  
- >>> https://bluff-murex.vercel.app  
+#### Playable link (hosted on Vercel + Render): https://bluff-murex.vercel.app  
 
 > **Note:** Please excuse the long load times — this is running on the free tier of Render for API hosting.
 
@@ -56,7 +55,7 @@ For example:
 
 In theory, all cards placed in a single turn must be of the same rank, but a player can lie or tell the truth.
 
-Remember, for a single deck, there are only 4 of each cards. 8 for two decks. So it will be obvious to see who's lying when there are "10 x Aces" on the table. Who's lying?
+Remember, for a single deck, there are only 4 of each cards. 8 for two decks. So it will be obvious to see that someone's lying when there are "10 x Aces" on the table. But who? Should I call and take my chance? Or should I pass if I feel it's too risky?
 
 Other players can play the same called card(s), pass and let it go or call “Bluff”.
 
@@ -70,11 +69,11 @@ The first player to get rid of all their cards wins. The game does not end on on
 
 ## Documentation Index (WIP)
 
-- `docs/GAMEPLAY.md` — Full game rules and flow.
+- `docs/GAMEPLAY.md` — Full game rules and flow. (TODO)
 - `docs/API.md` — HTTP + WebSocket API reference with message schemas.
 - `docs/ARCHITECTURE.md` — System architecture and code structure.
-- `docs/UML.md` — UML diagrams (Mermaid).
-- `docs/WIREFRAME.md` — Frontend wireframes and layout references.
+- `docs/UML.md` — UML diagrams (Mermaid). (TODO)
+- `docs/WIREFRAME.md` — Frontend wireframes and layout references. (TODO)
 
 ---
 
@@ -88,7 +87,7 @@ The first player to get rid of all their cards wins. The game does not end on on
 
 ## Running Locally
 
-### 1️⃣ Backend
+###  Backend
 
 From the repository root:
 
@@ -113,7 +112,7 @@ Expected response:
 
 ---
 
-### 2️⃣ Frontend
+### Frontend
 
 In a separate terminal:
 
