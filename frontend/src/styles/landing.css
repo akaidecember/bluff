@@ -226,3 +226,63 @@
     font-size: clamp(40px, 10vw, 64px);
   }
 }
+
+@media (max-width: 900px) {
+  .landing-cards::before,
+  .landing-cards::after {
+    width: 150px;
+    height: 210px;
+  }
+
+  .landing-joker {
+    width: 150px;
+  }
+}
+
+@media (max-width: 600px), (max-height: 700px) {
+  .landing-top {
+    padding: 16px 18px;
+  }
+
+  .landing-main {
+    gap: 16px;
+  }
+
+  .landing-title {
+    letter-spacing: 3px;
+  }
+
+  .landing-subtitle {
+    margin-top: 10px;
+    font-size: clamp(18px, 4.6vw, 22px);
+  }
+
+  .landing-cta {
+    margin-top: 18px;
+  }
+
+  .cta {
+    min-width: 180px;
+    padding: 14px 18px;
+    font-size: 18px;
+  }
+
+  .landing-note {
+    font-size: 16px;
+  }
+
+  .landing-cards::before,
+  .landing-cards::after,
+  .landing-joker {
+    width: 120px;
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 520px) {
+  .landing-cards::before,
+  .landing-cards::after,
+  .landing-joker {
+    display: none;
+  }
+}
