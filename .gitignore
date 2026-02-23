@@ -33,4 +33,10 @@ frontend/.vite/
 *.swo
 
 # Other
-docs/
+#docs/
+
+# Scripts 
+/scripts
+
+# Screenshots
+frontend/screenshots

@@ -1,0 +1,110 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import { chromium } from "@playwright/test";
+
+const args = process.argv.slice(2);
+const argMap = new Map();
+
+for (let i = 0; i < args.length; i += 1) {
+  const arg = args[i];
+  if (!arg.startsWith("--")) {
+    continue;
+  }
+  const key = arg.slice(2);
+  const next = args[i + 1];
+  if (next && !next.startsWith("--")) {
+    argMap.set(key, next);
+    i += 1;
+  } else {
+    argMap.set(key, "true");
+  }
+}
+
+const baseUrl = argMap.get("base") || process.env.BASE_URL || "http://localhost:5173";
+const outputDir = argMap.get("out") || "screenshots";
+const routes = (argMap.get("routes") || "/,/lobby")
+  .split(",")
+  .map((route) => route.trim())
+  .filter(Boolean)
+  .map((route) => (route.startsWith("/") ? route : `/${route}`));
+
+const reduceMotion = (argMap.get("reduce-motion") ?? "true") !== "false";
+const fullPage = (argMap.get("full-page") ?? "true") !== "false";
+
+const viewports = [
+  { name: "iphone-se", width: 375, height: 667 },
+  { name: "iphone-14", width: 390, height: 844 },
+  { name: "iphone-14-pro-max", width: 430, height: 932 },
+  { name: "ipad-mini", width: 768, height: 1024 },
+  { name: "ipad-mini-landscape", width: 1024, height: 768 },
+  { name: "samsung-fold", width: 320, height: 720 },
+  { name: "samsung-fold-open", width: 673, height: 841 },
+  { name: "laptop-13", width: 1280, height: 800 },
+  { name: "laptop-14", width: 1440, height: 900 },
+  { name: "laptop-15", width: 1536, height: 864 },
+  { name: "laptop-16", width: 1728, height: 1117 },
+  { name: "monitor-24", width: 1920, height: 1080 },
+  { name: "monitor-27", width: 2560, height: 1440 },
+  { name: "monitor-34-ultrawide", width: 3440, height: 1440 },
+  { name: "monitor-40-4k", width: 3840, height: 2160 },
+];
+
+const slugify = (value) =>
+  value
+    .replace(/^\//, "")
+    .replace(/[^\w-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "home";
+
+const run = async () => {
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const browser = await chromium.launch();
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  if (reduceMotion) {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.addStyleTag({
+      content: `
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+          scroll-behavior: auto !important;
+        }
+      `,
+    });
+  }
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+
+    for (const route of routes) {
+      const targetUrl = `${baseUrl}${route}`;
+      const routeSlug = slugify(route);
+      const fileName = `${viewport.name}-${routeSlug}.png`;
+      const filePath = path.join(outputDir, fileName);
+
+      try {
+        await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector("#root", { timeout: 5000 });
+        await page.waitForTimeout(5000);
+        await page.screenshot({ path: filePath, fullPage });
+        process.stdout.write(`Saved ${filePath}\n`);
+      } catch (error) {
+        process.stderr.write(`Failed ${viewport.name} ${route}: ${error?.message ?? error}\n`);
+      }
+    }
+  }
+
+  await browser.close();
+};
+
+run().catch((error) => {
+  process.stderr.write(`${error?.stack ?? error}\n`);
+  process.exit(1);
+});
