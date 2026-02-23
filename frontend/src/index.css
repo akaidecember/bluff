@@ -239,6 +239,15 @@ button:not(:disabled):active {
   border-radius: 999px;
   background: rgba(4, 12, 20, 0.35);
   backdrop-filter: blur(8px);
+  color: rgba(245, 250, 255, 0.92);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: auto;
+}
+
+.connection-label {
+  line-height: 1.1;
 }
 
 .connection-dot {
@@ -874,10 +883,11 @@ button.danger:hover:not(:disabled) {
   right: 1rem;
   top: 0.9rem;
   display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
   z-index: 12;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .room-chip {
@@ -1878,13 +1888,12 @@ button.danger:hover:not(:disabled) {
   .my-hand-rows {
     justify-items: start;
     height: auto;
-    overflow-x: auto;
     padding-bottom: 0.9rem;
   }
 
   .my-hand-row {
     justify-content: flex-start;
-    min-width: max-content;
+    min-width: 0;
   }
 }
 

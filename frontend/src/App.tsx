@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
-import ConnectionStatusBadge from "./components/ConnectionStatus";
 import Landing from "./pages/Landing";
 import GamePage from "./pages/Game";
 import LobbyPage from "./pages/Lobby";
@@ -117,18 +116,13 @@ export default function App() {
     <>
       <div className="felt-overlay" aria-hidden="true" />
       <div className={`app-shell${isGameRoute ? " game-shell" : ""}`}>
-        <header className="app-header">
-          <ConnectionStatusBadge
-            status={status}
-            onRetry={() => {
-              setLastError(null);
-              client.connect(WS_URL);
-            }}
-          />
-          <div className="message-stack">
-            {lastError && <p className="banner error">Server: {lastError}</p>}
-          </div>
-        </header>
+        {lastError && (
+          <header className="app-header">
+            <div className="message-stack">
+              <p className="banner error">Server: {lastError}</p>
+            </div>
+          </header>
+        )}
         <div className="game-content">{child}</div>
         {lastEvent && (
           <div className="toast" role="status" aria-live="polite">
@@ -156,6 +150,11 @@ export default function App() {
               deckCount={deckCount}
               direction={direction}
               publicState={publicState}
+              status={status}
+              onRetryConnection={() => {
+                setLastError(null);
+                client.connect(WS_URL);
+              }}
               onChangePlayerId={setPlayerId}
               onChangeDisplayName={setDisplayName}
               onChangeRoomCode={setRoomCode}
@@ -175,6 +174,10 @@ export default function App() {
               privateState={privateState}
               lastChallenge={lastChallenge}
               status={status}
+              onRetryConnection={() => {
+                setLastError(null);
+                client.connect(WS_URL);
+              }}
               onSend={(message) => client.send(message)}
             />
           )}

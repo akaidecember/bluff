@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import ClaimRankDial from "../components/ClaimRankDial";
+import ConnectionStatusBadge from "../components/ConnectionStatus";
 import PlayingCard from "../components/PlayingCard";
 import type { ConnectionStatus } from "../lib/ws";
 import { useSound } from "../lib/sound";
@@ -15,6 +16,7 @@ export type GameProps = {
   privateState: PrivateState | null;
   lastChallenge: Extract<ServerMessage, { type: "challenge_resolved" }> | null;
   status: ConnectionStatus;
+  onRetryConnection?: () => void;
   onSend: (message: ClientMessage) => void;
 };
 
@@ -244,6 +246,7 @@ export default function Game({
   privateState,
   lastChallenge,
   status,
+  onRetryConnection,
   onSend,
 }: GameProps) {
   const lastSyncRoomRef = useRef<string | null>(null);
@@ -350,14 +353,17 @@ export default function Game({
       6,
       Math.floor((availableWidth - responsiveLayout.myCardWidth) / effectiveStep) + 1
     );
+    const comfortRows = Math.min(4, Math.max(1, Math.floor((hand.length - 1) / 18) + 1));
+    const comfortMax = Math.ceil(hand.length / comfortRows);
+    const cappedByWidth = Math.min(fittedByWidth, comfortMax);
 
-    if (hand.length <= fittedByWidth) {
+    if (hand.length <= cappedByWidth) {
       return hand.length;
     }
-    if (hand.length <= fittedByWidth * 2) {
+    if (hand.length <= cappedByWidth * 2) {
       return Math.ceil(hand.length / 2);
     }
-    if (hand.length <= fittedByWidth * 3) {
+    if (hand.length <= cappedByWidth * 3) {
       return Math.ceil(hand.length / 3);
     }
     return Math.ceil(hand.length / 4);
@@ -774,7 +780,18 @@ export default function Game({
     );
   }
 
-  if (phase === "WAITING_FOR_PLAYERS" || phase === "DEALING") {
+  if (phase === "WAITING_FOR_PLAYERS") {
+    return (
+      <main className="screen game-table-screen">
+        <section className="panel result-panel">
+          <h1>Waiting for players...</h1>
+          <p>Add at least one more player, then the host can start the game.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (phase === "DEALING") {
     return (
       <main className="screen game-table-screen">
         <section className="panel result-panel">
@@ -789,6 +806,7 @@ export default function Game({
     <main className={`screen game-table-screen${isMyTurn ? " my-turn" : ""}`}>
       <section ref={tableStageRef} className="panel table-stage-panel" style={tableStageStyle}>
         <div className="table-hud">
+          <ConnectionStatusBadge status={status} onRetry={onRetryConnection} />
           <div
             className={`last-claim-chip${publicState?.last_claim ? " has-claim" : ""}${canCallBluff ? " call-ready" : ""}`}
           >

@@ -5,6 +5,13 @@
   overflow-y: auto;
 }
 
+.lobby-connection {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+}
+
 .felt-bg {
   position: absolute;
   inset: 0;
