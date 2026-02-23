@@ -240,7 +240,7 @@ export default function Lobby({
                   animate={{ rotateY: 0, opacity: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {isClockwise ? "Clockwise" : "Counterclockwise"}
+                  {isClockwise ? "Clockwise" : "Anti clockwise"}
                 </motion.span>
               </button>
             </div>

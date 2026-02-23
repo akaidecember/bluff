@@ -7,7 +7,9 @@ import { GameSetupChips } from "../components/GameSetupChips";
 import { PlayerPills } from "../components/PlayerPills";
 import { RoomCodeCard } from "../components/RoomCodeCard";
 import { Toasts, type Toast } from "../components/Toasts";
+import ConnectionStatusBadge from "../components/ConnectionStatus";
 import { cardSlideLeft, cardSlideRight } from "../lib/motion";
+import type { ConnectionStatus } from "../lib/ws";
 import type { ClientMessage, PublicState } from "../types/messages";
 import "../styles/lobby.css";
 
@@ -21,6 +23,8 @@ export type LobbyProps = {
   deckCount: number;
   direction: string;
   publicState: PublicState | null;
+  status: ConnectionStatus;
+  onRetryConnection?: () => void;
   onChangePlayerId: (value: string) => void;
   onChangeDisplayName: (value: string) => void;
   onChangeRoomCode: (value: string) => void;
@@ -40,6 +44,8 @@ export default function Lobby({
   deckCount,
   direction,
   publicState,
+  status,
+  onRetryConnection,
   onChangePlayerId,
   onChangeDisplayName,
   onChangeRoomCode,
@@ -61,7 +67,7 @@ export default function Lobby({
   const activeRoomCode = (publicState?.room_code ?? roomCode).toUpperCase();
   const activeDeckCount = publicState?.deck_count ?? deckCount;
   const deckLabel = activeDeckCount === 1 ? "1 deck (54 cards)" : "2 decks (108 cards)";
-  const directionLabel = (publicState?.direction ?? direction) === "CLOCKWISE" ? "Playing clockwise" : "Playing counterclockwise";
+  const directionLabel = (publicState?.direction ?? direction) === "CLOCKWISE" ? "Playing clockwise" : "Playing anti clockwise";
   const isRoomCodeValid = roomCode.trim().length === ROOM_CODE_LENGTH;
 
   const statusText = useMemo(() => {
@@ -240,6 +246,9 @@ export default function Lobby({
       transition={{ duration: 0.25 }}
     >
       <div className="felt-bg" aria-hidden="true" />
+      <div className="lobby-connection">
+        <ConnectionStatusBadge status={status} onRetry={onRetryConnection} />
+      </div>
       <Toasts toasts={toasts} />
 
       <motion.div className="lobby-shell" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -394,7 +403,7 @@ export default function Lobby({
                     animate={{ rotateY: 0, opacity: 1 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {direction === "CLOCKWISE" ? "Clockwise" : "Counterclockwise"}
+                    {direction === "CLOCKWISE" ? "Clockwise" : "Anti clockwise"}
                   </motion.span>
                 </motion.button>
               </div>
