@@ -34,3 +34,6 @@ frontend/.vite/
 
 # Other
 docs/
+
+# Scripts 
+/scripts

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
+import ClaimRankDial from "../components/ClaimRankDial";
 import PlayingCard from "../components/PlayingCard";
+import type { ConnectionStatus } from "../lib/ws";
 import { useSound } from "../lib/sound";
 import type { ClientMessage, PrivateState, PublicState, ServerMessage } from "../types/messages";
 
@@ -12,6 +14,7 @@ export type GameProps = {
   publicState: PublicState | null;
   privateState: PrivateState | null;
   lastChallenge: Extract<ServerMessage, { type: "challenge_resolved" }> | null;
+  status: ConnectionStatus;
   onSend: (message: ClientMessage) => void;
 };
 
@@ -23,6 +26,7 @@ type Seat = {
   y: number;
   angle: number;
   isCurrent: boolean;
+  isActiveTurn: boolean;
   isFinished: boolean;
 };
 
@@ -95,24 +99,29 @@ function computeResponsiveLayout(rawWidth: number): ResponsiveLayout {
 }
 
 function PileStack({ count, label, className = "", metaText }: PileStackProps) {
-  const visible = Math.min(Math.max(count, 1), 8);
+  const visible = Math.min(Math.max(count, 1), 5);
   return (
     <div className={`pile-stack ${className}`.trim()}>
       <div className={`pile-cards${count === 0 ? " empty" : ""}`}>
-        {Array.from({ length: visible }, (_, index) => (
-          <img
-            key={`${label}-${index}`}
-            src="/cards/BACK.svg"
-            alt={`${label} card`}
-            className="pile-card"
-            style={{
-              transform: `translate(${index * 1.8}px, ${-index * 1.6}px) rotate(${(index % 2 === 0 ? -1 : 1) * index * 1.5}deg)`,
-            }}
-            draggable={false}
-          />
-        ))}
+        <div className="table-stack">
+          {Array.from({ length: visible }, (_, index) => (
+            <img
+              key={`${label}-${index}`}
+              src="/cards/BACK.svg"
+              alt={`${label} card`}
+              className={`pile-card table-card${index === 0 ? " top" : ""}`}
+              style={
+                {
+                  "--i": index,
+                  zIndex: visible - index,
+                } as CSSProperties
+              }
+              draggable={false}
+            />
+          ))}
+        </div>
       </div>
-      <p>{metaText ?? `${label}: ${count}`}</p>
+      <p className="table-label">{metaText ?? `${label}: ${count}`}</p>
     </div>
   );
 }
@@ -140,6 +149,49 @@ function tableNameFromRank(rank: string | null): string {
 
   const base = names[rank] ?? rank;
   return `${base}'s Table`;
+}
+
+function rankLabel(rank: string): string {
+  const names: Record<string, string> = {
+    A: "Ace",
+    K: "King",
+    Q: "Queen",
+    J: "Jack",
+    "10": "Ten",
+    "9": "Nine",
+    "8": "Eight",
+    "7": "Seven",
+    "6": "Six",
+    "5": "Five",
+    "4": "Four",
+    "3": "Three",
+    "2": "Two",
+    JK: "Joker",
+  };
+
+  return names[rank] ?? rank;
+}
+
+function pluralizeRank(label: string, count: number): string {
+  if (count === 1) {
+    return label;
+  }
+  const lower = label.toLowerCase();
+  if (lower.endsWith("s") || lower.endsWith("x") || lower.endsWith("ch") || lower.endsWith("sh")) {
+    return `${label}es`;
+  }
+  return `${label}s`;
+}
+
+function possessiveLabel(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return "Your";
+  }
+  if (trimmed.endsWith("s") || trimmed.endsWith("S")) {
+    return `${trimmed}'`;
+  }
+  return `${trimmed}'s`;
 }
 
 function getOpponentSeats(
@@ -179,6 +231,7 @@ function getOpponentSeats(
         y: twoPlayerLayout ? 26 : 50 + 31 * Math.sin(radians),
         angle: twoPlayerLayout ? 270 : angle,
         isCurrent: currentPlayerId === player.player_id,
+        isActiveTurn: currentPlayerId === player.player_id,
         isFinished: finishedOrder.includes(player.player_id),
       };
     });
@@ -190,6 +243,7 @@ export default function Game({
   publicState,
   privateState,
   lastChallenge,
+  status,
   onSend,
 }: GameProps) {
   const lastSyncRoomRef = useRef<string | null>(null);
@@ -215,6 +269,20 @@ export default function Game({
   const phase = publicState?.phase ?? "UNKNOWN";
   const isMyTurn = publicState?.current_player_id === playerId;
   const hand = privateState?.hand ?? [];
+
+  const ownedRankCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const code of hand) {
+      let rank = code.slice(0, 1);
+      if (code.startsWith("10")) {
+        rank = "10";
+      } else if (code.startsWith("JK")) {
+        rank = "JK";
+      }
+      counts[rank] = (counts[rank] ?? 0) + 1;
+    }
+    return counts;
+  }, [hand]);
 
   const activeRoundRank = publicState?.round_rank ?? null;
   const effectiveClaimRank = activeRoundRank ?? claimRank;
@@ -608,12 +676,13 @@ export default function Game({
 
   const lastOpponentClaimText = useMemo(() => {
     const lastClaim = publicState?.last_claim;
-    if (!lastClaim || lastClaim.player_id === playerId) {
-      return "No opponent claim yet.";
+    if (!lastClaim) {
+      return "No claim yet.";
     }
     const name = playerNameById[lastClaim.player_id] ?? lastClaim.player_id;
-    return `${name}: ${lastClaim.count}x ${lastClaim.rank}`;
-  }, [playerId, playerNameById, publicState?.last_claim]);
+    const claimLabel = pluralizeRank(rankLabel(lastClaim.rank), lastClaim.count);
+    return `${name} claimed: ${lastClaim.count} ${claimLabel}`;
+  }, [playerNameById, publicState?.last_claim]);
 
   const roundStarterName = useMemo(() => {
     if (!publicState?.round_starter_id) {
@@ -625,6 +694,11 @@ export default function Game({
   const currentTableName = useMemo(
     () => tableNameFromRank(activeRoundRank),
     [activeRoundRank]
+  );
+
+  const myDisplayName = useMemo(
+    () => playerNameById[playerId] ?? "You",
+    [playerId, playerNameById]
   );
 
   const revealResult = useMemo(() => {
@@ -715,8 +789,9 @@ export default function Game({
     <main className={`screen game-table-screen${isMyTurn ? " my-turn" : ""}`}>
       <section ref={tableStageRef} className="panel table-stage-panel" style={tableStageStyle}>
         <div className="table-hud">
-          <div className="room-chip">Room {roomCode}</div>
-          <div className="last-claim-chip">
+          <div
+            className={`last-claim-chip${publicState?.last_claim ? " has-claim" : ""}${canCallBluff ? " call-ready" : ""}`}
+          >
             <span>Last Claim</span>
             <strong>{lastOpponentClaimText}</strong>
           </div>
@@ -743,6 +818,9 @@ export default function Game({
               Direction: <strong>{publicState?.direction ?? ""}</strong>
             </p>
             <p>
+              Connection: <strong>{status}</strong>
+            </p>
+            <p>
               Last Claim: <strong>{lastClaimText}</strong>
             </p>
             {activeRoundRank && roundStarterName && (
@@ -760,13 +838,12 @@ export default function Game({
             return (
               <article
                 key={seat.player_id}
-                className={`seat${seat.isCurrent ? " current" : ""}${seat.isFinished ? " finished" : ""}`}
+                className={`seat${seat.isCurrent ? " current" : ""}${seat.isActiveTurn ? " active-turn" : ""}${seat.isFinished ? " finished" : ""}${publicState?.current_player_id && !seat.isActiveTurn ? " dim-turn" : ""}`}
                 style={{ left: `${seat.x}%`, top: `${seat.y}%` }}
               >
                 <div className="seat-meta">
                   <h3>{seat.display_name}</h3>
-                  <p>{seat.hand_count} cards</p>
-                  {seat.isCurrent && <span className="seat-turn-flag">Turn</span>}
+                  <p className={`card-count${seat.isCurrent ? " current" : ""}`}>{seat.hand_count} cards</p>
                 </div>
                 <div className="seat-fan" style={{ transform: `rotate(${seat.angle - 90}deg)` }}>
                   {Array.from({ length: visibleCards }, (_, index) => {
@@ -816,30 +893,24 @@ export default function Game({
             />
           </div>
 
-          <div className="table-my-hand">
-            <div className="hand-layout">
-              <div className="control-group claim-control hand-left">
-                <select
-                  id="claim-rank"
-                  className="claim-select"
-                  aria-label="Claim rank"
+              <div className="table-my-hand">
+            <div className="hand-hud">
+              <div className="hand-left">
+                <ClaimRankDial
                   value={effectiveClaimRank}
-                  onChange={(event) => setClaimRank(event.target.value)}
+                  onChange={setClaimRank}
+                  ranks={CLAIM_RANKS}
+                  ownedCounts={ownedRankCounts}
+                  label="I CLAIM..."
+                  helperText=""
                   disabled={Boolean(activeRoundRank)}
-                >
-                  <option value="">Select rank</option>
-                  {CLAIM_RANKS.map((rank) => (
-                    <option key={rank} value={rank}>
-                      {rank}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div className="hand-center" ref={handCenterRef}>
                 <div className="my-hand-header">
-                  <h2>Your Hand</h2>
-                  <p>{hand.length} cards</p>
+                  <h2>{possessiveLabel(myDisplayName)} Hand</h2>
+                  <p className="card-count current">{hand.length} cards</p>
                 </div>
                 {hand.length === 0 ? (
                   <p className="muted">No cards left.</p>
@@ -878,19 +949,19 @@ export default function Game({
                 )}
               </div>
 
-              <div className="button-stack hand-right">
-                <button type="button" className="primary" disabled={!canSubmitPlay} onClick={playCards}>
+              <div className="button-stack hand-right action-buttons">
+                <button type="button" className="primary btn-play" disabled={!canSubmitPlay} onClick={playCards}>
                   PLAY
                 </button>
                 <button
                   type="button"
-                  className="danger"
+                  className="danger btn-call"
                   onClick={() => setBluffModalOpen(true)}
                   disabled={!canCallBluff}
                 >
                   CALL
                 </button>
-                <button type="button" className="secondary" onClick={passTurn} disabled={!canPass}>
+                <button type="button" className="secondary btn-pass" onClick={passTurn} disabled={!canPass}>
                   PASS
                 </button>
               </div>

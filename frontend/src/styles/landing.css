@@ -130,7 +130,7 @@
 .landing-title {
   font-size: clamp(72px, 9vw, 110px);
   font-weight: 800;
-  font-family: "Fredoka", sans-serif;
+  font-family: "Inter", sans-serif;
   letter-spacing: 6px;
   text-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
 }

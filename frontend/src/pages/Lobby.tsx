@@ -53,6 +53,8 @@ export default function Lobby({
   const toastTimeoutsRef = useRef(new Map<string, number>());
   const seenPlayersRef = useRef(new Set<string>());
   const initializedPlayersRef = useRef(false);
+  const autoJoinIntervalRef = useRef<number | null>(null);
+  const autoJoinTriesRef = useRef(0);
 
   const players = publicState?.players ?? [];
   const isHost = publicState?.host_id === playerId;
@@ -93,9 +95,24 @@ export default function Lobby({
   }, [searchParams, roomCode, onChangeRoomCode]);
 
   useEffect(() => {
+    const playerParam = searchParams.get("player_id") ?? searchParams.get("player");
+    const nameParam = searchParams.get("display_name") ?? searchParams.get("name");
+    if (playerParam && playerParam.trim() !== playerId) {
+      onChangePlayerId(playerParam.trim());
+    }
+    if (nameParam && nameParam.trim() !== displayName) {
+      onChangeDisplayName(nameParam.trim());
+    }
+  }, [searchParams, playerId, displayName, onChangePlayerId, onChangeDisplayName]);
+
+  useEffect(() => {
     return () => {
       toastTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
       toastTimeoutsRef.current.clear();
+      if (autoJoinIntervalRef.current) {
+        window.clearInterval(autoJoinIntervalRef.current);
+        autoJoinIntervalRef.current = null;
+      }
     };
   }, []);
 
@@ -141,6 +158,42 @@ export default function Lobby({
       display_name: displayName.trim(),
     });
   };
+
+  useEffect(() => {
+    const autoJoinParam = searchParams.get("autojoin") ?? searchParams.get("join");
+    const shouldAutoJoin = autoJoinParam === "1" || autoJoinParam === "true";
+    if (!shouldAutoJoin || publicState) {
+      if (autoJoinIntervalRef.current) {
+        window.clearInterval(autoJoinIntervalRef.current);
+        autoJoinIntervalRef.current = null;
+      }
+      return;
+    }
+    if (!isRoomCodeValid || !playerId.trim() || !displayName.trim()) {
+      return;
+    }
+    if (autoJoinIntervalRef.current) {
+      return;
+    }
+
+    autoJoinTriesRef.current = 0;
+    const attemptJoin = () => {
+      autoJoinTriesRef.current += 1;
+      onSend({
+        type: "join_room",
+        room_code: roomCode.trim().toUpperCase(),
+        player_id: playerId.trim(),
+        display_name: displayName.trim(),
+      });
+      if (autoJoinTriesRef.current >= 10 && autoJoinIntervalRef.current) {
+        window.clearInterval(autoJoinIntervalRef.current);
+        autoJoinIntervalRef.current = null;
+      }
+    };
+
+    attemptJoin();
+    autoJoinIntervalRef.current = window.setInterval(attemptJoin, 600);
+  }, [searchParams, isRoomCodeValid, publicState, playerId, displayName, roomCode, onSend]);
 
   const handleStartGame = () => {
     if (!publicState) {

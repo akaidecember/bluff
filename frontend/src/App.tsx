@@ -20,6 +20,7 @@ export default function App() {
   const client = useMemo(() => new WebSocketClient(), []);
   const navigate = useNavigate();
   const location = useLocation();
+  const isGameRoute = location.pathname === "/game";
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [playerId, setPlayerId] = useState("player-1");
   const [displayName, setDisplayName] = useState("Player One");
@@ -53,10 +54,11 @@ export default function App() {
         client.send({ type: "sync_state", room_code: message.room_code, player_id: playerId });
       }
       if (message.type === "challenge_resolved") {
-        const resultText = message.picked_matches_claim
-          ? `Bluff failed. ${message.challenger_id} takes the pile.`
-          : `Bluff caught. ${message.claimant_id} takes the pile.`;
-        setLastEvent(`${resultText} Picked ${message.picked_card}.`);
+        if (message.picked_matches_claim) {
+          setLastEvent(`Bluff failed. ${message.challenger_id} takes the pile.`);
+        } else {
+          setLastEvent(`Bluff caught. ${message.claimant_id} takes the pile. Picked ${message.picked_card}.`);
+        }
         setLastChallenge(message);
       }
       if (message.type === "pile_discarded") {
@@ -97,12 +99,24 @@ export default function App() {
     };
   }, [lastChallenge]);
 
+  useEffect(() => {
+    if (!lastEvent) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setLastEvent(null);
+    }, 2000);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [lastEvent]);
+
   const activeRoomCode = publicState?.room_code ?? roomCode;
 
   const shell = (child: ReactNode) => (
     <>
       <div className="felt-overlay" aria-hidden="true" />
-      <div className="app-shell">
+      <div className={`app-shell${isGameRoute ? " game-shell" : ""}`}>
         <header className="app-header">
           <ConnectionStatusBadge
             status={status}
@@ -113,10 +127,14 @@ export default function App() {
           />
           <div className="message-stack">
             {lastError && <p className="banner error">Server: {lastError}</p>}
-            {lastEvent && <p className="banner info">Event: {lastEvent}</p>}
           </div>
         </header>
-        {child}
+        <div className="game-content">{child}</div>
+        {lastEvent && (
+          <div className="toast" role="status" aria-live="polite">
+            {lastEvent}
+          </div>
+        )}
       </div>
     </>
   );
@@ -156,6 +174,7 @@ export default function App() {
               publicState={publicState}
               privateState={privateState}
               lastChallenge={lastChallenge}
+              status={status}
               onSend={(message) => client.send(message)}
             />
           )}

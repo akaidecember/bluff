@@ -80,7 +80,7 @@
 }
 
 .wip-title {
-  font-family: "Fredoka", sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 700;
   font-size: clamp(48px, 6vw, 70px);
   letter-spacing: 0.1rem;

@@ -21,19 +21,13 @@ type ConnectionStatusProps = {
 export default function ConnectionStatusBadge({ status, onRetry }: ConnectionStatusProps) {
   const showRetry = (status === "disconnected" || status === "error") && onRetry;
   return (
-    <div className={`connection-pill ${status}`} aria-live="polite">
-      <div className="connection-main">
-        <span className={`status-indicator ${status}`} aria-hidden="true" />
-        <span>Connection:</span>
-        <strong>{statusLabels[status]}</strong>
-        {showRetry && (
-          <button type="button" className="connection-retry" onClick={onRetry} aria-label="Retry connection">
-            Retry
-          </button>
-        )}
-      </div>
-      {statusSubtext[status] && (
-        <div className="connection-subtext">{statusSubtext[status]}</div>
+    <div className="connection-mini" aria-live="polite" title={`Connection: ${statusLabels[status]}`}>
+      <span className={`connection-dot ${status}`} aria-hidden="true" />
+      <span className="sr-only">Connection: {statusLabels[status]}</span>
+      {showRetry && (
+        <button type="button" className="connection-retry-dot" onClick={onRetry} aria-label="Retry connection">
+          Retry
+        </button>
       )}
     </div>
   );
