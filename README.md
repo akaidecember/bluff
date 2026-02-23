@@ -189,6 +189,7 @@ docs/
 
 ## TODO
 
+- Just realized that on smaller screens, since I disabled the scroll, not everything is shown on the screen, making it unplayable on smaller screens (critical)
 - Setup and Add tests and code analysis in workflows and actions
 - Need to add How to Play page on landing site
 - Add a mute button to mute all audio
