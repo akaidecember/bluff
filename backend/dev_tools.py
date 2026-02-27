@@ -1,4 +1,8 @@
+"""Developer helpers for seeding rooms and simulating actions."""
+
 from __future__ import annotations
+
+# pylint: disable=duplicate-code
 
 from dataclasses import dataclass, field
 import os
@@ -14,9 +18,13 @@ except ImportError:  # pragma: no cover fallback for non-package execution
 
 DEV_MODE_ENV = "BLUFFER_DEV_MODE"
 
+
 def is_dev_mode() -> bool:
+    """Return True when dev mode is enabled via environment."""
     return os.getenv(DEV_MODE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
 
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def seed_room_for_dev(
     room_manager: RoomManager,
     host_id: str,
@@ -25,7 +33,7 @@ def seed_room_for_dev(
     direction: TurnDirection,
     player_count: int,
 ) -> Room:
-    
+    """Create a room with bots for local development/testing."""
     normalized_count = _validate_player_count(player_count)
     room = room_manager.create_room(host_id, host_name, deck_count, direction)
 
@@ -39,15 +47,20 @@ def seed_room_for_dev(
 
     return room
 
+
 @dataclass(frozen=True)
 class DevAction:
+    """Represents an automated dev action choice."""
+
     kind: str
     player_id: str
     card_indices: List[int] = field(default_factory=list)
     claim_rank: Optional[str] = None
     pick_index: Optional[int] = None
 
+
 def choose_dev_action(room: Room, rng: random.Random) -> DevAction:
+    """Choose a plausible dev action for the current game state."""
     state = room.game_state
     player_id = state.current_player_id()
     hand = state.players[player_id].hand
@@ -62,18 +75,20 @@ def choose_dev_action(room: Room, rng: random.Random) -> DevAction:
             pick_index = rng.randrange(len(state.last_played_cards))
 
             return DevAction(kind="call_bluff", player_id=player_id, pick_index=pick_index)
-        
+
         return _make_play_action(player_id, hand, rng, state.round_rank)
 
     if state.phase == GamePhase.PLAYER_TURN:
         if state.last_claim is not None and rng.random() < 0.1:
             return DevAction(kind="pass_turn", player_id=player_id)
-        
+
         return _make_play_action(player_id, hand, rng, state.round_rank)
 
     return DevAction(kind="pass_turn", player_id=player_id)
 
+
 def apply_dev_action(room: Room, action: DevAction) -> Optional[dict]:
+    """Apply a dev action to the room and return any event payload."""
     if action.kind == "play_cards":
         room.game_state.play_cards(
             action.player_id,
@@ -91,7 +106,7 @@ def apply_dev_action(room: Room, action: DevAction) -> Optional[dict]:
                 "room_code": room.code,
                 "player_id": action.player_id,
             }
-        
+
         return None
 
     if action.kind == "call_bluff":
@@ -110,13 +125,15 @@ def apply_dev_action(room: Room, action: DevAction) -> Optional[dict]:
 
     raise ValueError(f"unknown dev action {action.kind}")
 
-def _validate_player_count(player_count: int) -> int:
 
+def _validate_player_count(player_count: int) -> int:
+    """Validate player count against min/max limits."""
     if player_count < MIN_PLAYERS or player_count > MAX_PLAYERS:
         raise ValueError(
             f"player_count must be between {MIN_PLAYERS} and {MAX_PLAYERS}"
         )
     return player_count
+
 
 def _make_play_action(
     player_id: str,
@@ -124,14 +141,14 @@ def _make_play_action(
     rng: random.Random,
     locked_rank: Optional[str],
 ) -> DevAction:
-    
+    """Create a play_cards action with a random selection."""
     if not hand:
         return DevAction(kind="pass_turn", player_id=player_id)
 
     count = rng.randint(1, min(3, len(hand)))
     indices = rng.sample(range(len(hand)), count)
     claim_rank = locked_rank or rng.choice(RANKS)
-    
+
     return DevAction(
         kind="play_cards",
         player_id=player_id,

@@ -1,3 +1,7 @@
+"""Tests for the game engine."""
+
+# pylint: disable=missing-function-docstring
+
 import pytest
 
 from backend.game_engine import (

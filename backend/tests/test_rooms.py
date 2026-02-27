@@ -1,3 +1,7 @@
+"""Tests for room management and deck helpers."""
+
+# pylint: disable=missing-function-docstring,import-error
+
 import pytest
 
 from backend.rooms import JoinStatus, Room, RoomManager, build_deck

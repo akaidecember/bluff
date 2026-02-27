@@ -63,7 +63,7 @@ def build_deck(deck_count: int) -> List[Card]:
     """
     if deck_count not in VALID_DECK_COUNTS:
         raise ValueError("deck count must be 1 or 2")
-    
+
     deck: List[Card] = []
 
     for deck_id in range(1, deck_count + 1):
@@ -73,7 +73,7 @@ def build_deck(deck_count: int) -> List[Card]:
 
         for joker_variant in JOKER_VARIANTS:
             deck.append(Card(rank=JOKER_RANK, suit=joker_variant, deck=deck_id))
-            
+
     random.SystemRandom().shuffle(deck)
     return deck
 
@@ -119,13 +119,13 @@ class Room:
         """
         if player_id in self.players:
             return JoinStatus.ALREADY_JOINED
-        
+
         if self.is_full():
             return JoinStatus.FULL
-        
+
         if self.game_state.phase != GamePhase.WAITING_FOR_PLAYERS:
             return JoinStatus.CLOSED
-        
+
         player = Player(player_id=player_id, display_name=display_name)
         self.players[player_id] = player
         self.join_order.append(player_id)
@@ -161,14 +161,14 @@ class Room:
         """
         if not self.can_start():
             raise ValueError("need at least two players to start")
-        
+
         deck = build_deck(self.deck_count)
         hands: Dict[str, List[Card]] = {player_id: [] for player_id in self.join_order}
 
         for card_index, card in enumerate(deck):
             player_id = self.join_order[card_index % len(self.join_order)]
             hands[player_id].append(card)
-            
+
         self.game_state.start_game(self.join_order, self.direction)
         self.game_state.set_dealt_hands(hands)
 
@@ -197,7 +197,7 @@ class RoomManager:
 
         if deck_count not in VALID_DECK_COUNTS:
             raise ValueError("deck count must be 1 or 2")
-        
+
         room = Room(code=code, host_id=player_id, deck_count=deck_count, direction=direction)
         room.add_player(player_id, display_name)
         self.rooms[code] = room
@@ -222,7 +222,7 @@ class RoomManager:
 
         if room is None:
             return JoinStatus.NOT_FOUND, None
-        
+
         status = room.add_player(player_id, display_name)
 
         return status, room
@@ -244,13 +244,13 @@ class RoomManager:
 
         if room is None:
             raise ValueError("room not found")
-        
+
         if room.host_id != player_id:
             raise ValueError("only host can start the game")
-        
+
         if room.game_state.phase != GamePhase.WAITING_FOR_PLAYERS:
             raise ValueError("game already started")
-        
+
         room.start_game()
         return room
 

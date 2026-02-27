@@ -1,3 +1,5 @@
+"""CLI helpers for running automated dev simulations."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,6 +17,7 @@ except ImportError:  # pragma: no cover - fallback for non-package execution
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for the simulation runner."""
     parser = argparse.ArgumentParser(description="Run dev autoplayer simulations.")
     parser.add_argument(
         "--players",
@@ -62,6 +65,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def _run_single_game(
     player_count: int,
     deck_count: int,
@@ -70,6 +74,7 @@ def _run_single_game(
     seed: Optional[int],
     log_steps: bool,
 ) -> tuple[int, list[str], Optional[str]]:
+    """Simulate a single game and return steps, standings, and loser."""
     rng = random.Random(seed)
     room_manager = RoomManager()
     room = seed_room_for_dev(
@@ -98,6 +103,7 @@ def _run_single_game(
 
 
 def main() -> None:
+    """Run one or more simulated games from the CLI."""
     args = _parse_args()
     direction = TurnDirection(args.direction)
     base_seed = args.seed
