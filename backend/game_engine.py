@@ -87,7 +87,7 @@ class ChallengeOutcome:
     picked_matches_claim: bool
 
 @dataclass
-class GameState:
+class GameState:  # pylint: disable=too-many-instance-attributes
     """Mutable state for an active game, including turn and pile data."""
 
     phase: GamePhase = GamePhase.WAITING_FOR_PLAYERS
@@ -134,8 +134,7 @@ class GameState:
         """
         if self.direction == TurnDirection.CLOCKWISE:
             return 1
-        else:
-            return -1
+        return -1
 
     def add_player(self, player: Player) -> None:
         """Register a player before the game starts.
@@ -153,7 +152,7 @@ class GameState:
 
         if player.player_id in self.players:
             raise ValueError(f"player {player.player_id} already exists")
-        
+
         self.players[player.player_id] = player
 
     def start_game(self, turn_order: List[str], direction: TurnDirection) -> None:
@@ -173,12 +172,12 @@ class GameState:
 
         if len(turn_order) < 2:
             raise ValueError("need at least two players to start")
-        
+
         missing = [pid for pid in turn_order if pid not in self.players]
 
         if missing:
             raise ValueError(f"unknown players in turn order: {missing}")
-        
+
         self.turn_order = list(turn_order)
         self.current_turn_index = 0
         self.direction = direction
@@ -219,7 +218,7 @@ class GameState:
         """
         if self.phase not in {GamePhase.PLAYER_TURN, GamePhase.CLAIM_MADE}:
             raise ValueError(f"no active player in phase {self.phase.value}")
-        
+
         return self.turn_order[self.current_turn_index]
 
     def play_cards(self, player_id: str, card_indices: List[int], claim_rank: str) -> None:
@@ -240,10 +239,10 @@ class GameState:
 
         if player_id != self.current_player_id():
             raise ValueError("play made out of turn")
-        
+
         if claim_rank not in RANKS:
             raise ValueError("invalid claim rank")
-        
+
         if not card_indices:
             raise ValueError("must play at least one card")
 
@@ -252,7 +251,7 @@ class GameState:
 
         if any(index < 0 or index > max_index for index in card_indices):
             raise ValueError("card index out of range")
-        
+
         if len(set(card_indices)) != len(card_indices):
             raise ValueError("duplicate card indices")
 
@@ -323,24 +322,24 @@ class GameState:
 
         if challenger_id != self.current_player_id():
             raise ValueError("challenge made out of turn")
-        
+
         if self.last_claim is None:
             raise ValueError("no claim to challenge")
-        
+
         if challenger_id == self.last_claim.player_id:
             raise ValueError("claimer cannot challenge own claim")
-        
+
         if challenger_id not in self.players:
             raise ValueError("unknown challenger")
-        
+
         if not self.last_played_cards:
             raise ValueError("no cards to challenge")
-        
+
         if pick_index < 0 or pick_index >= len(self.last_played_cards):
             raise ValueError("picked card index out of range")
 
         picked_card = self.last_played_cards[pick_index]
-        picked_matches = (picked_card.rank == self.last_claim.rank or picked_card.rank == JOKER_RANK)
+        picked_matches = picked_card.rank in {self.last_claim.rank, JOKER_RANK}
 
         if picked_matches:
             penalty_player_id = challenger_id
@@ -400,7 +399,7 @@ class GameState:
         """
         if not self.turn_order:
             raise ValueError("turn order not set")
-        
+
         if self.phase == GamePhase.GAME_OVER:
             return
 
@@ -412,7 +411,7 @@ class GameState:
 
             if player_id not in self.finished_order:
                 return
-            
+
         self.phase = GamePhase.GAME_OVER
 
     def _update_finished(self) -> None:
@@ -444,7 +443,7 @@ class GameState:
 
             if not self.players[claimant].hand:
                 return
-            
+
         remaining_with_cards = [
             player_id
             for player_id in self.turn_order

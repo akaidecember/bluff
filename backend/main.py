@@ -22,7 +22,7 @@ try:
     from .game_engine import GamePhase, TurnDirection
     from .rooms import JoinStatus, MIN_PLAYERS, Room, RoomManager
 
-except ImportError: 
+except ImportError:
     from dev_tools import (
         DEV_MODE_ENV,
         apply_dev_action,
@@ -254,7 +254,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if status == JoinStatus.NOT_FOUND:
                     await websocket.send_json(
                         {
-                            "type": "room_not_found", 
+                            "type": "room_not_found",
                             "room_code": room_code
                         }
                     )
@@ -263,7 +263,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if status == JoinStatus.FULL:
                     await websocket.send_json(
                         {
-                            "type": "room_full", 
+                            "type": "room_full",
                             "room_code": room_code
                         }
                     )
@@ -272,7 +272,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if status == JoinStatus.CLOSED:
                     await websocket.send_json(
                         {
-                            "type": "room_closed", 
+                            "type": "room_closed",
                             "room_code": room_code
                         }
                     )
@@ -337,7 +337,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if not room_code or not player_id:
                     await websocket.send_json(
                         {
-                            "type": "error", 
+                            "type": "error",
                             "message": "room_code and player_id required"
                         }
                     )
@@ -347,7 +347,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 except ValueError as exc:
                     await websocket.send_json(
                         {
-                            "type": "invalid_action", 
+                            "type": "invalid_action",
                             "message": str(exc)
                         }
                     )
@@ -432,7 +432,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if not room_code or not player_id:
                     await websocket.send_json(
                         {
-                            "type": "error", 
+                            "type": "error",
                             "message": "room_code and player_id required"
                         }
                     )
@@ -441,7 +441,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if connection_players.get(websocket) != player_id:
                     await websocket.send_json(
                         {
-                            "type": "error", 
+                            "type": "error",
                             "message": "player_id mismatch"
                         }
                     )
@@ -452,7 +452,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if room is None:
                     await websocket.send_json(
                         {
-                            "type": "room_not_found", 
+                            "type": "room_not_found",
                             "room_code": room_code
                         }
                     )
@@ -465,7 +465,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                         if not isinstance(card_indices, list) or claim_rank is None:
                             raise ValueError("card_indices and claim_rank required")
-                        
+
                         room.game_state.play_cards(
                             player_id, [int(index) for index in card_indices], str(claim_rank)
                         )
@@ -572,7 +572,7 @@ async def _send_private_state(room_code: str) -> None:
 
     if room is None:
         return
-    
+
     for socket in room_connections.get(room_code, set()):
         player_id = connection_players.get(socket)
 
@@ -629,7 +629,7 @@ async def _run_dev_autoplay(
                 },
             )
             return
-        
+
         room.start_game()
 
         await _broadcast_room(
@@ -717,7 +717,7 @@ def _public_state(room: Room) -> dict:
             }
 
             for player in room.players.values()
-            
+
         ],
         "current_player_id": current_player_id,
         "last_claim": last_claim,

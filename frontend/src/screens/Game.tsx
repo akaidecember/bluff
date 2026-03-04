@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import ClaimRankDial from "../components/ClaimRankDial";
 import ConnectionStatusBadge from "../components/ConnectionStatus";
@@ -54,6 +54,8 @@ type BluffReveal = {
   claimantId: string;
   challengerId: string;
 };
+
+type BluffSoundKey = "bluff_called" | "card_hover" | "card_flip" | "bluff_success" | "bluff_fail";
 
 type ResponsiveLayout = {
   stageWidth: number;
@@ -254,6 +256,8 @@ export default function Game({
   const [claimRank, setClaimRank] = useState("");
   const [pickIndex, setPickIndex] = useState(0);
   const [isBluffModalOpen, setBluffModalOpen] = useState(false);
+  const [isBluffPicking, setBluffPicking] = useState(false);
+  const [pendingPickIndex, setPendingPickIndex] = useState<number | null>(null);
   const [isInfoHovering, setInfoHovering] = useState(false);
   const [responsiveLayout, setResponsiveLayout] = useState<ResponsiveLayout>(() =>
     computeResponsiveLayout(1280)
@@ -265,9 +269,36 @@ export default function Game({
   const handCenterRef = useRef<HTMLDivElement | null>(null);
   const playAnimationTimeouts = useRef<number[]>([]);
   const bluffRevealTimeout = useRef<number | null>(null);
+  const bluffPickTimeout = useRef<number | null>(null);
   const lastBluffRevealRef = useRef<string | null>(null);
   const lastHoverSoundRef = useRef<number>(0);
+  const lastRevealHoverRef = useRef<number>(0);
   const { play } = useSound();
+
+  const playSound = useCallback(
+    (key: BluffSoundKey) => {
+      switch (key) {
+        case "bluff_called":
+          play("claim", { volume: 0.14 });
+          break;
+        case "card_hover":
+          play("hover", { volume: 0.05 });
+          break;
+        case "card_flip":
+          play("click", { volume: 0.12 });
+          break;
+        case "bluff_success":
+          play("reveal", { volume: 0.16 });
+          break;
+        case "bluff_fail":
+          play("fall", { volume: 0.16 });
+          break;
+        default:
+          break;
+      }
+    },
+    [play]
+  );
 
   const phase = publicState?.phase ?? "UNKNOWN";
   const isMyTurn = publicState?.current_player_id === playerId;
@@ -441,12 +472,29 @@ export default function Game({
   }, [canCallBluff]);
 
   useEffect(() => {
+    if (!isBluffModalOpen) {
+      setBluffPicking(false);
+      setPendingPickIndex(null);
+      if (bluffPickTimeout.current) {
+        window.clearTimeout(bluffPickTimeout.current);
+        bluffPickTimeout.current = null;
+      }
+      return;
+    }
+    playSound("bluff_called");
+  }, [isBluffModalOpen, playSound]);
+
+  useEffect(() => {
     return () => {
       playAnimationTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
       playAnimationTimeouts.current = [];
       if (bluffRevealTimeout.current) {
         window.clearTimeout(bluffRevealTimeout.current);
         bluffRevealTimeout.current = null;
+      }
+      if (bluffPickTimeout.current) {
+        window.clearTimeout(bluffPickTimeout.current);
+        bluffPickTimeout.current = null;
       }
     };
   }, []);
@@ -605,6 +653,15 @@ export default function Game({
     play("hover", { volume: 0.07 });
   };
 
+  const handleRevealHover = () => {
+    const now = performance.now();
+    if (now - lastRevealHoverRef.current < 90) {
+      return;
+    }
+    lastRevealHoverRef.current = now;
+    playSound("card_hover");
+  };
+
   const queuePlayAnimation = (cards: string[]) => {
     if (cards.length === 0) {
       return;
@@ -658,14 +715,28 @@ export default function Game({
   };
 
   const submitBluffPick = (index: number) => {
+    if (isBluffPicking) {
+      return;
+    }
     setPickIndex(index);
+    setPendingPickIndex(index);
+    setBluffPicking(true);
+    playSound("card_flip");
     onSend({
       type: "call_bluff",
       room_code: roomCode,
       player_id: playerId,
       pick_index: index,
     });
-    setBluffModalOpen(false);
+    if (bluffPickTimeout.current) {
+      window.clearTimeout(bluffPickTimeout.current);
+    }
+    bluffPickTimeout.current = window.setTimeout(() => {
+      setBluffModalOpen(false);
+      setBluffPicking(false);
+      setPendingPickIndex(null);
+      bluffPickTimeout.current = null;
+    }, 320);
   };
 
   const currentTurnName =
@@ -726,6 +797,17 @@ export default function Game({
       tone: "liar",
     };
   }, [bluffReveal, playerNameById]);
+
+  useEffect(() => {
+    if (!bluffReveal || !revealResult) {
+      return;
+    }
+    if (revealResult.tone === "liar") {
+      playSound("bluff_success");
+      return;
+    }
+    playSound("bluff_fail");
+  }, [bluffReveal, revealResult, playSound]);
 
   const tableStageStyle = useMemo(
     () =>
@@ -804,7 +886,11 @@ export default function Game({
 
   return (
     <main className={`screen game-table-screen${isMyTurn ? " my-turn" : ""}`}>
-      <section ref={tableStageRef} className="panel table-stage-panel" style={tableStageStyle}>
+      <section
+        ref={tableStageRef}
+        className={`panel table-stage-panel${isBluffModalOpen ? " table-blur" : ""}${isBluffPicking ? " table-bluff-picking" : ""}`}
+        style={tableStageStyle}
+      >
         <div className="table-hud">
           <ConnectionStatusBadge status={status} onRetry={onRetryConnection} />
           <div
@@ -906,7 +992,7 @@ export default function Game({
             <PileStack
               count={publicState?.pile_count ?? 0}
               label="Center"
-              className="center-pile"
+              className={`center-pile${revealResult?.tone === "miss" ? " bluff-miss" : ""}`}
               metaText={currentTableName}
             />
           </div>
@@ -990,23 +1076,33 @@ export default function Game({
 
       {isBluffModalOpen && canCallBluff && (
         <div className="bluff-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="panel bluff-modal">
-            <h2>Select A Card To Reveal</h2>
-            <p>Pick one face-down card from the last played set.</p>
-            <div className="bluff-pick-grid">
+          <div className="bluff-modal">
+            <div className="bluff-modal-header">
+              <h2 className="bluff-title">BLUFF CALLED</h2>
+              <p className="bluff-sub">Select a card to reveal</p>
+            </div>
+            <div className="reveal-row">
               {Array.from({ length: pickMax }, (_, index) => (
-                <PlayingCard
-                  key={`pick-${index}`}
-                  faceDown
-                  selected={pickIndex === index}
-                  className="pick-card"
-                  onClick={() => submitBluffPick(index)}
-                  title={`Pick card ${index + 1}`}
-                />
+                <div className="reveal-wrapper" key={`pick-${index}`}>
+                  <PlayingCard
+                    faceDown
+                    selected={pickIndex === index}
+                    disabled={isBluffPicking}
+                    className={`reveal-card${pendingPickIndex === index ? " flip" : ""}`}
+                    onClick={() => submitBluffPick(index)}
+                    onMouseEnter={handleRevealHover}
+                    title={`Pick card ${index + 1}`}
+                  />
+                </div>
               ))}
             </div>
             <div className="button-row">
-              <button type="button" className="secondary" onClick={() => setBluffModalOpen(false)}>
+              <button
+                type="button"
+                className="cancel-bluff-btn"
+                onClick={() => setBluffModalOpen(false)}
+                disabled={isBluffPicking}
+              >
                 Cancel Bluff
               </button>
             </div>
