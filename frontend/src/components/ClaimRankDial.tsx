@@ -8,6 +8,7 @@ type ClaimRankDialProps = {
   label?: string;
   helperText?: string;
   disabled?: boolean;
+  orientation?: "horizontal" | "vertical";
 };
 
 type ScrollOptions = {
@@ -22,6 +23,7 @@ export default function ClaimRankDial({
   label = "Declare Rank",
   helperText = "Make your claim.",
   disabled = false,
+  orientation = "horizontal",
 }: ClaimRankDialProps) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -55,7 +57,7 @@ export default function ClaimRankDial({
     setActiveIndex(idx);
     scrollToIndex(idx, { smooth: true });
     requestAnimationFrame(() => applyDepth(idx));
-  }, [value, ranks]);
+  }, [value, ranks, orientation]);
 
   useEffect(() => {
     const idx = ranks.indexOf(value);
@@ -72,14 +74,14 @@ export default function ClaimRankDial({
         scrollEndTimer.current = null;
       }
     };
-  }, [ranks, value]);
+  }, [ranks, value, orientation]);
 
   useEffect(() => {
     updateDialPadding();
     const onResize = () => updateDialPadding();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [ranks]);
+  }, [ranks, orientation]);
 
   const applyDepth = (centerIdx: number) => {
     for (let i = 0; i < ranks.length; i += 1) {
@@ -113,16 +115,33 @@ export default function ClaimRankDial({
     if (!scroller || !first) {
       return;
     }
+    if (orientation === "vertical") {
+      const itemHeight = first.offsetHeight;
+      const pad = Math.max(0, scroller.clientHeight / 2 - itemHeight / 2);
+      scroller.style.paddingTop = `${pad}px`;
+      scroller.style.paddingBottom = `${pad}px`;
+      scroller.style.paddingLeft = "";
+      scroller.style.paddingRight = "";
+      return;
+    }
+
     const itemWidth = first.offsetWidth;
     const pad = Math.max(0, scroller.clientWidth / 2 - itemWidth / 2);
     scroller.style.paddingLeft = `${pad}px`;
     scroller.style.paddingRight = `${pad}px`;
+    scroller.style.paddingTop = "";
+    scroller.style.paddingBottom = "";
   };
 
   const scrollToIndex = (idx: number, { smooth }: ScrollOptions) => {
     const scroller = scrollerRef.current;
     const el = itemRefs.current[idx];
     if (!scroller || !el) {
+      return;
+    }
+    if (orientation === "vertical") {
+      const target = el.offsetTop + el.offsetHeight / 2 - scroller.clientHeight / 2;
+      scroller.scrollTo({ top: target, behavior: smooth ? "smooth" : "auto" });
       return;
     }
     const target = el.offsetLeft + el.offsetWidth / 2 - scroller.clientWidth / 2;
@@ -135,7 +154,9 @@ export default function ClaimRankDial({
       return activeIndex;
     }
     const scrollerRect = scroller.getBoundingClientRect();
-    const centerX = scrollerRect.left + scrollerRect.width / 2;
+    const center = orientation === "vertical"
+      ? scrollerRect.top + scrollerRect.height / 2
+      : scrollerRect.left + scrollerRect.width / 2;
 
     let bestIdx = 0;
     let bestDist = Infinity;
@@ -146,8 +167,10 @@ export default function ClaimRankDial({
         continue;
       }
       const rect = el.getBoundingClientRect();
-      const elCenter = rect.left + rect.width / 2;
-      const dist = Math.abs(elCenter - centerX);
+      const elCenter = orientation === "vertical"
+        ? rect.top + rect.height / 2
+        : rect.left + rect.width / 2;
+      const dist = Math.abs(elCenter - center);
       if (dist < bestDist) {
         bestDist = dist;
         bestIdx = i;
@@ -197,14 +220,18 @@ export default function ClaimRankDial({
     if (disabled) {
       return;
     }
-    if (!["ArrowLeft", "ArrowRight", "Enter", " "].includes(event.key)) {
+    const movementKeys =
+      orientation === "vertical"
+        ? ["ArrowUp", "ArrowDown"]
+        : ["ArrowLeft", "ArrowRight"];
+    if (![...movementKeys, "Enter", " "].includes(event.key)) {
       return;
     }
 
     event.preventDefault();
     isUserScrollingRef.current = false;
 
-    if (event.key === "ArrowLeft") {
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
       const next = Math.max(0, activeIndex - 1);
       setActiveIndex(next);
       onChange(ranks[next]);
@@ -213,7 +240,7 @@ export default function ClaimRankDial({
       return;
     }
 
-    if (event.key === "ArrowRight") {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       const next = Math.min(ranks.length - 1, activeIndex + 1);
       setActiveIndex(next);
       onChange(ranks[next]);
@@ -226,7 +253,7 @@ export default function ClaimRankDial({
   };
 
   return (
-    <div className={`dial-root${disabled ? " is-disabled" : ""}`}>
+    <div className={`dial-root ${orientation}${disabled ? " is-disabled" : ""}`.trim()}>
       <div className="dial-header">
         <div className="dial-label">{label}</div>
         {helperText ? <div className="dial-helper">{helperText}</div> : null}
@@ -256,9 +283,19 @@ export default function ClaimRankDial({
             }
 
             const { deltaX, deltaY, deltaMode } = event;
-            const modeScale = deltaMode === 1 ? 16 : deltaMode === 2 ? scroller.clientWidth : 1;
+            const modeScale = deltaMode === 1 ? 16 : deltaMode === 2 ? scroller.clientHeight : 1;
             const dx = deltaX * modeScale;
             const dy = deltaY * modeScale;
+
+            if (orientation === "vertical") {
+              event.preventDefault();
+              const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+              const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+              const next = scroller.scrollTop + delta;
+              scroller.scrollTop = Math.min(Math.max(0, next), maxScroll);
+              return;
+            }
+
             const absX = Math.abs(dx);
             const absY = Math.abs(dy);
             const looksLikeMouseWheel = deltaMode === 1 || deltaMode === 2 || (absX === 0 && absY >= 12);

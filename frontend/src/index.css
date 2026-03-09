@@ -86,6 +86,25 @@ body::after {
   overflow-x: hidden;
 }
 
+.global-wip-notice {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 60;
+  margin: 0;
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 0.5rem 0.68rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 214, 153, 0.9);
+  background: rgba(22, 10, 0, 0.74);
+  color: #ffe8c1;
+  font-size: 0.84rem;
+  line-height: 1.32;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
 h1,
 h2,
 h3,
@@ -890,6 +909,85 @@ button.danger:hover:not(:disabled) {
   pointer-events: auto;
 }
 
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hud-menu {
+  position: relative;
+  display: none;
+}
+
+.hud-menu-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(8, 18, 37, 0.72);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 0;
+  box-shadow: none;
+}
+
+.hud-menu-btn span {
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: #e9f2ff;
+}
+
+.hud-menu-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  width: min(320px, calc(100vw - 26px));
+  border-radius: 14px;
+  padding: 0.7rem 0.75rem;
+  display: grid;
+  gap: 0.38rem;
+  background: rgba(9, 19, 36, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.32);
+  z-index: 50;
+}
+
+.hud-menu-popover p,
+.hud-menu-popover strong {
+  color: #eef5ff;
+  font-size: 0.86rem;
+}
+
+.hud-menu-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.12rem;
+}
+
+.hud-menu-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #f4f9ff;
+}
+
+.hud-menu-wip {
+  margin-top: 0.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  padding-top: 0.45rem;
+  opacity: 0.9;
+}
+
 .room-chip {
   justify-self: start;
   padding: 0.34rem 0.72rem;
@@ -1518,9 +1616,30 @@ button.danger:hover:not(:disabled) {
   min-height: 120px;
   overscroll-behavior: contain;
   touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 20%, #000 80%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+
+.dial-root.vertical .dial-wrap {
+  width: 72px;
+  height: 180px;
+}
+
+.dial-root.vertical .dial-scroller {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  touch-action: pan-y;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
 }
 
 .dial-scroller::-webkit-scrollbar {
@@ -1528,16 +1647,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .dial-center-marker {
-  position: absolute;
-  left: 50%;
-  top: 25%;
-  bottom: 25%;
-  width: 2px;
-  transform: translateX(-50%);
-  border-radius: 2px;
-  background: rgba(255, 170, 0, 0.4);
-  box-shadow: 0 0 20px rgba(255, 170, 0, 0.4);
-  pointer-events: none;
+  display: none;
 }
 
 .dial-item {
@@ -1546,8 +1656,8 @@ button.danger:hover:not(:disabled) {
   width: 48px;
   height: 60px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.06);
+  border: 0;
+  background: transparent;
   color: rgba(255, 255, 255, 0.92);
   display: grid;
   place-items: center;
@@ -1572,13 +1682,18 @@ button.danger:hover:not(:disabled) {
   opacity: 1;
   background: linear-gradient(180deg, rgba(255, 170, 0, 0.95), rgba(255, 130, 0, 0.95));
   color: #111;
-  border-color: rgba(255, 170, 0, 0.55);
+  border: 0;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
 }
 
 .dial-item.is-owned:not(.is-active) {
-  border-color: rgba(255, 215, 120, 0.28);
+  border: 0;
   box-shadow: 0 0 20px rgba(255, 215, 120, 0.08);
+}
+
+.dial-root.vertical .dial-item {
+  width: 42px;
+  height: 44px;
 }
 
 .dial-scroller:focus {
@@ -2224,7 +2339,9 @@ button.danger:hover:not(:disabled) {
 
   .table-my-hand {
     width: calc(100% - 1rem);
-    padding: 16px;
+    bottom: 0.5rem;
+    min-height: 200px;
+    padding: 12px;
     border-radius: 16px;
   }
 
@@ -2233,8 +2350,23 @@ button.danger:hover:not(:disabled) {
     padding: 6px 12px;
   }
 
+  .turn-spotlight-floating {
+    position: static;
+    transform: none;
+    margin: 0.35rem 0 0.1rem;
+    display: inline-flex;
+  }
+
   .last-claim-chip {
     max-width: 100%;
+  }
+
+  .last-claim-chip strong {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.2;
   }
 
   .info-corner {
@@ -2246,5 +2378,235 @@ button.danger:hover:not(:disabled) {
     width: 28px;
     height: 28px;
     font-size: 0.75rem;
+  }
+}
+
+@media (orientation: portrait) {
+  .global-wip-notice {
+    display: none;
+  }
+
+  .game-table-screen.portrait-layout .table-stage-panel {
+    min-height: 100svh;
+    padding: 0.45rem;
+  }
+
+  .game-table-screen.portrait-layout .table-hud {
+    top: 0.45rem;
+    left: 0.45rem;
+    right: 0.45rem;
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
+  .game-table-screen.portrait-layout .hud-menu {
+    display: block;
+  }
+
+  .game-table-screen.portrait-layout .hud-connection {
+    display: none;
+  }
+
+  .game-table-screen.portrait-layout .last-claim-chip {
+    position: absolute;
+    left: 50%;
+    top: 2.55rem;
+    transform: translateX(-50%);
+    justify-self: center;
+    max-width: min(190px, 50vw);
+    padding: 0.44rem 0.54rem;
+    text-align: center;
+  }
+
+  .game-table-screen.portrait-layout .last-claim-chip strong {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.2;
+  }
+
+  .game-table-screen.portrait-layout .turn-spotlight-floating {
+    position: absolute;
+    top: 0.48rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.82rem;
+    padding: 6px 10px;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .game-table-screen.portrait-layout .table-surface {
+    min-height: calc(100svh - 0.9rem);
+    padding: 4.25rem 0.4rem var(--table-bottom-padding);
+    border-radius: 20px;
+  }
+
+  .game-table-screen.portrait-layout .table-surface::after {
+    width: min(95vw, 640px);
+    height: min(64vh, 540px);
+  }
+
+  .game-table-screen.portrait-layout .seat-meta {
+    min-width: 82px;
+    padding: 0.24rem 0.36rem;
+    border-radius: 9px;
+  }
+
+  .game-table-screen.portrait-layout .seat-meta h3,
+  .game-table-screen.portrait-layout .seat-meta p {
+    font-size: 0.68rem;
+  }
+
+  .game-table-screen.portrait-layout .center-piles {
+    top: 47%;
+  }
+
+  .game-table-screen.portrait-layout .table-my-hand {
+    width: calc(100% - 0.8rem);
+    left: 50%;
+    bottom: 0.32rem;
+    transform: translateX(-50%);
+    border-radius: 18px;
+    padding: 10px 10px 12px;
+    background: rgba(14, 14, 16, 0.56);
+  }
+
+  .game-table-screen.portrait-layout .hand-hud {
+    grid-template-columns: minmax(78px, 0.8fr) minmax(0, 2fr);
+    grid-template-rows: auto auto;
+    gap: 0.45rem;
+    align-items: stretch;
+  }
+
+  .game-table-screen.portrait-layout .hand-left {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-root {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    margin-left: -10px;
+    gap: 0.25rem;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    opacity: 0.88;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-helper {
+    display: none;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-wrap {
+    width: 80px;
+    height: 190px;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-scroller {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 12px;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-item {
+    width: 46px;
+    height: 52px;
+    border-radius: 12px;
+  }
+
+  .game-table-screen.portrait-layout .hand-left .dial-rank {
+    font-size: 1.02rem;
+  }
+
+  .game-table-screen.portrait-layout .hand-center {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    padding-right: 0.28rem;
+  }
+
+  .game-table-screen.portrait-layout .my-hand-header h2 {
+    font-size: 0.92rem;
+  }
+
+  .game-table-screen.portrait-layout .my-hand-rows {
+    justify-items: start;
+    overflow-x: auto;
+    overflow-y: visible;
+    width: 100%;
+    padding: 0.2rem 0.24rem 0.45rem 0.08rem;
+    scrollbar-width: thin;
+  }
+
+  .game-table-screen.portrait-layout .my-hand-row {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .game-table-screen.portrait-layout .hand-right {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    justify-content: stretch;
+    align-items: stretch;
+  }
+
+  .game-table-screen.portrait-layout .action-buttons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .game-table-screen.portrait-layout .action-buttons button {
+    padding: 0.56rem 0.42rem;
+    min-height: 42px;
+    font-size: 0.88rem;
+    border-radius: 11px;
+  }
+
+  .game-table-screen.portrait-layout .action-buttons .btn-play,
+  .game-table-screen.portrait-layout .action-buttons .btn-call,
+  .game-table-screen.portrait-layout .action-buttons .btn-pass {
+    width: 100%;
+  }
+
+  .game-table-screen.portrait-layout .info-corner {
+    display: none;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 430px) {
+  .game-table-screen.portrait-layout .hand-left .dial-root {
+    margin-left: 0;
+  }
+
+  .game-table-screen.portrait-layout .hand-hud {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 0.32rem;
+  }
+
+  .game-table-screen.portrait-layout .hand-center {
+    padding-right: 0.16rem;
+  }
+
+  .game-table-screen.portrait-layout .action-buttons button {
+    font-size: 0.82rem;
+    min-height: 40px;
   }
 }

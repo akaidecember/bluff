@@ -59,6 +59,7 @@ type BluffSoundKey = "bluff_called" | "card_hover" | "card_flip" | "bluff_succes
 
 type ResponsiveLayout = {
   stageWidth: number;
+  stageHeight: number;
   myCardWidth: number;
   myCardOverlap: number;
   seatCardWidth: number;
@@ -74,21 +75,41 @@ type ResponsiveLayout = {
 const PLAY_ANIMATION_MS = 520;
 const PLAY_ANIMATION_STAGGER_MS = 70;
 
-function computeResponsiveLayout(rawWidth: number): ResponsiveLayout {
+function computeResponsiveLayout(rawWidth: number, rawHeight: number): ResponsiveLayout {
   const stageWidth = Math.max(320, rawWidth);
-  const myCardWidth = Math.round(Math.min(80, Math.max(48, stageWidth * 0.06)));
-  const myCardOverlap = -Math.round(Math.min(56, Math.max(28, myCardWidth * 0.62)));
-  const seatCardWidth = Math.round(Math.min(54, Math.max(34, stageWidth * 0.043)));
+  const fallbackHeight = typeof window !== "undefined" ? window.innerHeight : 720;
+  const stageHeight = Math.max(520, rawHeight || fallbackHeight || 720);
+  const isPortrait = stageHeight > stageWidth;
+  const heightScale = Math.min(1, Math.max(0.78, stageHeight / 820));
+  const baseMyCardWidth = isPortrait
+    ? Math.min(74, Math.max(48, stageWidth * 0.125))
+    : Math.min(80, Math.max(44, stageWidth * 0.06));
+  const myCardWidth = Math.round(44 + (baseMyCardWidth - 44) * heightScale);
+  const myCardOverlap = -Math.round(
+    Math.min(isPortrait ? 22 : 56, Math.max(isPortrait ? 8 : 24, myCardWidth * (isPortrait ? 0.3 : 0.6)))
+  );
+  const baseSeatCardWidth = isPortrait
+    ? Math.min(44, Math.max(24, stageWidth * 0.05))
+    : Math.min(54, Math.max(30, stageWidth * 0.043));
+  const seatCardWidth = Math.round(30 + (baseSeatCardWidth - 30) * heightScale);
   const seatFanStep = Math.round(Math.min(15, Math.max(8, seatCardWidth * 0.28)));
-  const seatFanWidth = Math.round(Math.min(220, Math.max(130, seatCardWidth * 3.8)));
-  const seatFanHeight = Math.round(Math.min(108, Math.max(64, seatCardWidth * 1.7)));
-  const tableHandWidth = Math.round(Math.min(1120, Math.max(360, stageWidth * 0.92)));
-  const handSlabHeight = Math.round(Math.min(276, Math.max(224, stageWidth * 0.215)));
-  const cardsViewportHeight = Math.round(Math.max(108, handSlabHeight - 78));
-  const tableBottomPadding = handSlabHeight + 24;
+  const seatFanWidth = Math.round(Math.min(isPortrait ? 162 : 220, Math.max(110, seatCardWidth * 3.8)));
+  const seatFanHeight = Math.round(Math.min(isPortrait ? 86 : 108, Math.max(52, seatCardWidth * 1.7)));
+  const tableHandWidth = Math.round(Math.min(1120, Math.max(320, stageWidth * (isPortrait ? 0.97 : 0.92))));
+  const baseHandSlab = isPortrait
+    ? Math.min(260, Math.max(184, stageHeight * 0.27))
+    : Math.min(276, Math.max(210, stageWidth * 0.215));
+  const handSlabHeight = Math.round(
+    Math.min(baseHandSlab, Math.max(isPortrait ? 172 : 190, Math.min(baseHandSlab * heightScale, stageHeight * 0.36)))
+  );
+  const cardsViewportHeight = Math.round(
+    Math.max(isPortrait ? 84 : 100, handSlabHeight - Math.round((isPortrait ? 62 : 70) * heightScale))
+  );
+  const tableBottomPadding = handSlabHeight + Math.round((isPortrait ? 8 : 16) * heightScale);
 
   return {
     stageWidth,
+    stageHeight,
     myCardWidth,
     myCardOverlap,
     seatCardWidth,
@@ -202,7 +223,8 @@ function getOpponentSeats(
   players: PublicState["players"],
   playerId: string,
   currentPlayerId: string | null,
-  finishedOrder: string[]
+  finishedOrder: string[],
+  isPortraitViewport: boolean
 ): Seat[] {
   const total = players.length;
   if (total <= 1) {
@@ -214,9 +236,42 @@ function getOpponentSeats(
     players.findIndex((player) => player.player_id === playerId)
   );
 
-  return players
-    .filter((player) => player.player_id !== playerId)
+  const opponents = players.filter((player) => player.player_id !== playerId);
+  const opponentsByTableOrder = [...opponents].sort((left, right) => {
+    const leftIndex = players.findIndex((item) => item.player_id === left.player_id);
+    const rightIndex = players.findIndex((item) => item.player_id === right.player_id);
+    const leftOffset = (leftIndex - myIndex + total) % total;
+    const rightOffset = (rightIndex - myIndex + total) % total;
+    return leftOffset - rightOffset;
+  });
+
+  return opponents
     .map((player) => {
+      const portraitIndex = opponentsByTableOrder.findIndex((item) => item.player_id === player.player_id);
+      if (isPortraitViewport) {
+        // In portrait, the local device player occupies the bottom seat,
+        // so opponents are evenly distributed along the opposite half-ring.
+        const minAngle = 180;
+        const maxAngle = 360;
+        const angle =
+          opponentsByTableOrder.length === 1
+            ? 270
+            : minAngle +
+              (portraitIndex * (maxAngle - minAngle)) / Math.max(opponentsByTableOrder.length - 1, 1);
+        const radians = (angle * Math.PI) / 180;
+        return {
+          player_id: player.player_id,
+          display_name: player.display_name,
+          hand_count: player.hand_count,
+          x: 50 + 34 * Math.cos(radians),
+          y: 50 + 24 * Math.sin(radians),
+          angle,
+          isCurrent: currentPlayerId === player.player_id,
+          isActiveTurn: currentPlayerId === player.player_id,
+          isFinished: finishedOrder.includes(player.player_id),
+        };
+      }
+
       const playerIndex = players.findIndex((item) => item.player_id === player.player_id);
       let offset = playerIndex - myIndex;
       if (offset <= 0) {
@@ -259,14 +314,16 @@ export default function Game({
   const [isBluffPicking, setBluffPicking] = useState(false);
   const [pendingPickIndex, setPendingPickIndex] = useState<number | null>(null);
   const [isInfoHovering, setInfoHovering] = useState(false);
+  const [isHudMenuOpen, setHudMenuOpen] = useState(false);
   const [responsiveLayout, setResponsiveLayout] = useState<ResponsiveLayout>(() =>
-    computeResponsiveLayout(1280)
+    computeResponsiveLayout(1280, 720)
   );
   const [playAnimations, setPlayAnimations] = useState<PlayAnimation[]>([]);
   const [bluffReveal, setBluffReveal] = useState<BluffReveal | null>(null);
   const [handCenterWidth, setHandCenterWidth] = useState<number | null>(null);
   const tableStageRef = useRef<HTMLElement | null>(null);
   const handCenterRef = useRef<HTMLDivElement | null>(null);
+  const hudMenuRef = useRef<HTMLDivElement | null>(null);
   const playAnimationTimeouts = useRef<number[]>([]);
   const bluffRevealTimeout = useRef<number | null>(null);
   const bluffPickTimeout = useRef<number | null>(null);
@@ -303,6 +360,7 @@ export default function Game({
   const phase = publicState?.phase ?? "UNKNOWN";
   const isMyTurn = publicState?.current_player_id === playerId;
   const hand = privateState?.hand ?? [];
+  const isPortraitViewport = responsiveLayout.stageHeight > responsiveLayout.stageWidth;
 
   const ownedRankCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -361,9 +419,10 @@ export default function Game({
         publicState?.players ?? [],
         playerId,
         publicState?.current_player_id ?? null,
-        publicState?.finished_order ?? []
+        publicState?.finished_order ?? [],
+        isPortraitViewport
       ),
-    [publicState?.players, publicState?.current_player_id, publicState?.finished_order, playerId]
+    [isPortraitViewport, publicState?.players, publicState?.current_player_id, publicState?.finished_order, playerId]
   );
 
   const maxCardsPerRow = useMemo(() => {
@@ -375,13 +434,15 @@ export default function Game({
       responsiveLayout.myCardWidth - Math.abs(responsiveLayout.myCardOverlap),
       14
     );
+    const widthSafety = isPortraitViewport ? 0.84 : 1;
     const fallbackWidth = Math.max(
       responsiveLayout.stageWidth * 0.76,
       responsiveLayout.myCardWidth
     );
-    const availableWidth = Math.max(handCenterWidth ?? fallbackWidth, responsiveLayout.myCardWidth);
+    const availableWidth = Math.max((handCenterWidth ?? fallbackWidth) * widthSafety, responsiveLayout.myCardWidth);
+    const minCardsThatMustFit = isPortraitViewport ? 4 : 6;
     const fittedByWidth = Math.max(
-      6,
+      minCardsThatMustFit,
       Math.floor((availableWidth - responsiveLayout.myCardWidth) / effectiveStep) + 1
     );
     const comfortRows = Math.min(4, Math.max(1, Math.floor((hand.length - 1) / 18) + 1));
@@ -401,6 +462,7 @@ export default function Game({
   }, [
     hand.length,
     handCenterWidth,
+    isPortraitViewport,
     responsiveLayout.myCardOverlap,
     responsiveLayout.myCardWidth,
     responsiveLayout.stageWidth,
@@ -472,6 +534,32 @@ export default function Game({
   }, [canCallBluff]);
 
   useEffect(() => {
+    if (!isPortraitViewport) {
+      setHudMenuOpen(false);
+    }
+  }, [isPortraitViewport]);
+
+  useEffect(() => {
+    if (!isHudMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!hudMenuRef.current) {
+        return;
+      }
+      if (!hudMenuRef.current.contains(event.target as Node)) {
+        setHudMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isHudMenuOpen]);
+
+  useEffect(() => {
     if (!isBluffModalOpen) {
       setBluffPicking(false);
       setPendingPickIndex(null);
@@ -534,11 +622,12 @@ export default function Game({
     }
 
     let frameId = 0;
-    const updateFromWidth = (width: number) => {
-      const next = computeResponsiveLayout(width);
+    const updateFromWidth = (width: number, height: number) => {
+      const next = computeResponsiveLayout(width, height);
       setResponsiveLayout((previous) => {
         if (
           previous.stageWidth === next.stageWidth &&
+          previous.stageHeight === next.stageHeight &&
           previous.myCardWidth === next.myCardWidth &&
           previous.myCardOverlap === next.myCardOverlap &&
           previous.seatCardWidth === next.seatCardWidth &&
@@ -556,19 +645,19 @@ export default function Game({
       });
     };
 
-    const scheduleUpdate = (width: number) => {
+    const scheduleUpdate = (width: number, height: number) => {
       cancelAnimationFrame(frameId);
-      frameId = requestAnimationFrame(() => updateFromWidth(width));
+      frameId = requestAnimationFrame(() => updateFromWidth(width, height));
     };
 
-    scheduleUpdate(node.clientWidth);
+    scheduleUpdate(node.clientWidth, node.clientHeight);
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) {
         return;
       }
-      scheduleUpdate(entry.contentRect.width);
+      scheduleUpdate(entry.contentRect.width, entry.contentRect.height);
     });
     observer.observe(node);
 
@@ -741,6 +830,7 @@ export default function Game({
 
   const currentTurnName =
     playerNameById[publicState?.current_player_id ?? ""] ?? publicState?.current_player_id ?? "TBD";
+  const statusText = status === "connected" ? "Connected" : "Waking up server...";
 
   const lastClaimText = useMemo(() => {
     const lastClaim = publicState?.last_claim;
@@ -885,14 +975,49 @@ export default function Game({
   }
 
   return (
-    <main className={`screen game-table-screen${isMyTurn ? " my-turn" : ""}`}>
+    <main className={`screen game-table-screen${isMyTurn ? " my-turn" : ""}${isPortraitViewport ? " portrait-layout" : ""}`}>
       <section
         ref={tableStageRef}
         className={`panel table-stage-panel${isBluffModalOpen ? " table-blur" : ""}${isBluffPicking ? " table-bluff-picking" : ""}`}
         style={tableStageStyle}
       >
         <div className="table-hud">
-          <ConnectionStatusBadge status={status} onRetry={onRetryConnection} />
+          <div className="hud-left">
+            <div className="hud-menu" ref={hudMenuRef}>
+              <button
+                type="button"
+                className="hud-menu-btn"
+                onClick={() => setHudMenuOpen((previous) => !previous)}
+                aria-label="Open game menu"
+                aria-expanded={isHudMenuOpen}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+              {isHudMenuOpen && (
+                <div className="hud-menu-popover" role="menu">
+                  <div className="hud-menu-title">
+                    <span className="hud-menu-icon" aria-hidden="true">
+                      i
+                    </span>
+                    <strong>Game Info</strong>
+                  </div>
+                  <p>Connection: {statusText}</p>
+                  <p>Turn: {isMyTurn ? "Your turn" : `${currentTurnName}'s turn`}</p>
+                  <p>Phase: {phase}</p>
+                  <p>Last claim: {lastClaimText}</p>
+                  <p className="hud-menu-wip">Work in progress: this game may contain bugs.</p>
+                </div>
+              )}
+            </div>
+            <ConnectionStatusBadge
+              status={status}
+              onRetry={onRetryConnection}
+              className="hud-connection"
+              showLabel={!isPortraitViewport}
+            />
+          </div>
           <div
             className={`last-claim-chip${publicState?.last_claim ? " has-claim" : ""}${canCallBluff ? " call-ready" : ""}`}
           >
@@ -1008,6 +1133,7 @@ export default function Game({
                   label="I CLAIM..."
                   helperText=""
                   disabled={Boolean(activeRoundRank)}
+                  orientation={isPortraitViewport ? "vertical" : "horizontal"}
                 />
               </div>
 
@@ -1054,9 +1180,6 @@ export default function Game({
               </div>
 
               <div className="button-stack hand-right action-buttons">
-                <button type="button" className="primary btn-play" disabled={!canSubmitPlay} onClick={playCards}>
-                  PLAY
-                </button>
                 <button
                   type="button"
                   className="danger btn-call"
@@ -1064,6 +1187,9 @@ export default function Game({
                   disabled={!canCallBluff}
                 >
                   CALL
+                </button>
+                <button type="button" className="primary btn-play" disabled={!canSubmitPlay} onClick={playCards}>
+                  PLAY
                 </button>
                 <button type="button" className="secondary btn-pass" onClick={passTurn} disabled={!canPass}>
                   PASS
