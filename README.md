@@ -144,16 +144,13 @@ Deployment
 
 # Architecture
 
-High level architecture:
-
-Client (React + Vite)
-        │
-        │ WebSocket
-        ▼
-FastAPI Backend
-        │
-        ▼
-Game Engine + Room State
+<img
+  width="700"
+  height="390"
+  alt="arch"
+  src="images/archi.png"
+  style="width: 100%; max-width: 900px; height: auto; aspect-ratio: 900 / 590; object-fit: cover;"
+/>
 
 Example message flow:
 
@@ -310,7 +307,3 @@ Contributions, bug reports, and feature suggestions are welcome.
 If you notice a bug or have an idea for improvement, feel free to open an issue or submit a pull request.
 
 ---
-
-# License
-
-MIT License
