@@ -4,6 +4,7 @@ import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import Landing from "./pages/Landing";
 import GamePage from "./pages/Game";
+import GamePhaserPage from "./pages/GamePhaser";
 import LobbyPage from "./pages/Lobby";
 import WorkInProgress from "./pages/WorkInProgress";
 import { WebSocketClient, type ConnectionStatus } from "./lib/ws";
@@ -77,7 +78,7 @@ export default function App() {
   const client = useMemo(() => new WebSocketClient(), []);
   const navigate = useNavigate();
   const location = useLocation();
-  const isGameRoute = location.pathname === "/game";
+  const isGameRoute = location.pathname === "/game" || location.pathname === "/game-phaser";
   const isScreenshotMode = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.has("screenshot") || params.has("demo");
@@ -246,6 +247,24 @@ export default function App() {
             path="/game"
             element={shell(
               <GamePage
+                playerId={effectivePlayerId}
+                roomCode={activeRoomCode}
+                publicState={effectivePublicState}
+                privateState={effectivePrivateState}
+                lastChallenge={lastChallenge}
+                status={effectiveStatus}
+                onRetryConnection={() => {
+                  setLastError(null);
+                  client.connect(WS_URL);
+                }}
+                onSend={effectiveOnSend}
+              />
+            )}
+          />
+          <Route
+            path="/game-phaser"
+            element={shell(
+              <GamePhaserPage
                 playerId={effectivePlayerId}
                 roomCode={activeRoomCode}
                 publicState={effectivePublicState}
