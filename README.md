@@ -1,5 +1,16 @@
 # Bluff
 
+Real-time multiplayer implementation of the classic **Bluff / Cheat** card game.  
+Built with **FastAPI, WebSockets, React, Vite, and TypeScript**.
+
+![Python](https://img.shields.io/badge/python-3.11-blue)
+![React](https://img.shields.io/badge/react-vite-blue)
+![Status](https://img.shields.io/badge/status-WIP-orange)
+![Deployment](https://img.shields.io/badge/frontend-vercel-black)
+![API](https://img.shields.io/badge/backend-render-purple)
+
+---
+
 <img
   width="900"
   height="590"
@@ -8,197 +19,298 @@
   style="width: 100%; max-width: 900px; height: auto; aspect-ratio: 900 / 590; object-fit: cover;"
 />
 
-#### Playable link (hosted on Vercel + Render): https://bluff-murex.vercel.app  
+---
 
-> **Note:** Please excuse the long load times — this is running on the free tier of Render for API hosting.
+# Play Online
+
+https://bluff-murex.vercel.app
+
+Note: The API runs on **Render free tier**, so cold starts can take a few seconds.
 
 ---
 
-## About
+# Table of Contents
 
-Bluff is one of my favorite card games to play in real life.  
-It’s responsible for many funny, chaotic, and surprisingly intens moments with my roommates or family. You’re constantly guessing, lying confidently, and trying to read other players.  
-
-So I built it online.  
-
-This project is a real-time multiplayer version of the classic “Bluff" card game, powered by WebSockets so that every move updates instantly across all players  
-
-This is built with:
-
-- Backend: FastAPI + WebSocket
-- Frontend: React + Vite + TypeScript
-
-This project is currently a **work in progress**, although most of the intended functionality is implemented, there might be some uncaught bugs.
-
----
-
-## How the Game Works
-
-Bluff is simple to learn but very fun to play, here's how it goes.
-
-Ideally 4 players, but the game works with more or fewer. You have the option to select 1 or 2 deck of cards in the room creation screen.
-
-Cards are distributed equally among all players. Players can see their own cards, but no one can see anyone else’s cards.
-
-The first player starts.
-
-They:
-
-- Place one or more cards face down in the middle.
-- Announce what they’re playing.
-
-For example:
-
-- “Three Kings”
-- “Two Fours”
-- “One Ace”
-
-In theory, all cards placed in a single turn must be of the same rank, but a player can lie or tell the truth.
-
-Remember, for a single deck, there are only 4 of each cards. 8 for two decks. So it will be obvious to see that someone's lying when there are "10 x Aces" on the table. But who? Should I call and take my chance? Or should I pass if I feel it's too risky?
-
-Other players can play the same called card(s), pass and let it go or call “Bluff”.
-
-If someone calls bluff, then out of the cards played by the last player, the caller needs to select a card blindly. If the selected card is a lie, then the other player picks up the pile. But if it is the card the player claimed it to be, then the caller picks up the entire pile.
-
-(There are multiple variations to this rule, like revealing all the cards on calling bluff, but I feel like this is a better way as it introduces a luck factor in the game.)
-
-The first player to get rid of all their cards wins. The game does not end on one player winning, the game just continues till there is only one player left with cards.
+- About
+- Why I Built This
+- How the Game Works
+- Tech Stack
+- Architecture
+- Running Locally
+- Dev Simulation
+- Project Structure
+- Documentation
+- Current Bugs and Limitations
+- Roadmap
+- Contributing
+- License
 
 ---
 
-## Documentation Index (WIP)
+# About
 
-- `docs/GAMEPLAY.md` — Full game rules and flow. (TODO)
-- `docs/API.md` — HTTP + WebSocket API reference with message schemas.
-- `docs/ARCHITECTURE.md` — System architecture and code structure.
-- `docs/UML.md` — UML diagrams (Mermaid). (TODO)
-- `docs/WIREFRAME.md` — Frontend wireframes and layout references. (TODO)
+Bluff is one of my favorite card games to play in real life. It has been responsible for many chaotic, funny, and occasionally intense moments with roommates and family. The whole game revolves around reading people, bluffing confidently, and deciding when to call someone out.
 
----
+So I built it online.
 
-## Requirements
+This project is a **real-time multiplayer implementation** of the classic Bluff card game.  
+Players interact through **WebSockets**, which allows every action to propagate instantly across all connected clients.
 
-- Python 3.11+
-- Node.js 18+
-- npm 9+
+The project is still a **work in progress**. Most of the intended functionality exists, but there may still be some bugs or unfinished UI elements.
 
 ---
 
-## Running Locally
+# Why I Built This
 
-###  Backend
+Bluff has always been one of those games that turns a quiet evening into complete chaos. The mix of deception, probability, and reading other players makes it incredibly fun.
 
-From the repository root:
+I wanted to recreate that experience online and experiment with building a **real-time multiplayer system using WebSockets**.
 
-```bash
+The goal of this project was not just to build the game itself, but also to explore:
+
+- Real-time multiplayer architecture
+- Game state synchronization
+- WebSocket communication patterns
+- Lightweight deployment of multiplayer services
+
+---
+
+# How the Game Works
+
+Bluff is easy to learn but becomes very interesting once players start lying.
+
+Ideally there are **four players**, but the game works with more or fewer. When creating a room you can choose to play with **one or two decks**.
+
+Cards are distributed equally among players.  
+Each player can see their own cards, but no one else’s.
+
+The **first player begins**.
+
+On their turn they:
+
+- Place one or more cards face down
+- Announce what they are playing
+
+Examples:
+
+- Three Kings
+- Two Fours
+- One Ace
+
+In theory, all cards played in a turn must be the **same rank**.  
+However the player may **lie or tell the truth**.
+
+With a single deck there are only **four cards of each rank** (eight if two decks are used).  
+So if someone claims something like **“ten Aces”**, someone is obviously lying.
+
+Other players can:
+
+- Play the same rank
+- Pass
+- Call **Bluff**
+
+When someone calls bluff, the caller must **select one of the last player’s cards blindly**.
+
+If the selected card is a **lie**, the player who played the cards picks up the entire pile.
+
+If the card is **truthful**, the caller picks up the entire pile.
+
+There are many variations of Bluff rules, but I prefer this one because the **blind selection adds a luck element** that makes the moment more dramatic.
+
+The first player to **get rid of all cards wins**, but the game continues until **only one player remains with cards**.
+
+---
+
+# Tech Stack
+
+Backend
+
+- FastAPI
+- Python 3.11
+- WebSockets
+
+Frontend
+
+- React
+- Vite
+- TypeScript
+
+Deployment
+
+- Vercel (frontend)
+- Render (backend)
+
+---
+
+# Architecture
+
+High level architecture:
+
+Client (React + Vite)
+        │
+        │ WebSocket
+        ▼
+FastAPI Backend
+        │
+        ▼
+Game Engine + Room State
+
+Example message flow:
+
+Client → WebSocket → FastAPI → Game Engine → Broadcast to all players
+
+Game state is currently stored **in-memory**, meaning server restarts reset all rooms.
+
+---
+
+# Running Locally
+
+Backend
+
+```
 python -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload --port 8000
 ```
 
-Health check to confirm the API is running:
+Health check:
 
-```bash
+```
 curl http://127.0.0.1:8000/health
 ```
 
 Expected response:
 
-```json
+```
 {"status":"ok"}
 ```
 
----
+Frontend
 
-### Frontend
-
-In a separate terminal:
-
-```bash
+```
 cd frontend
 npm install
 npm run dev
 ```
 
-Open the URL printed by Vite (default: `http://127.0.0.1:5173`).
+Open the URL printed by Vite (usually):
 
-Optional WebSocket URL override:
+```
+http://127.0.0.1:5173
+```
 
-```bash
+Optional WebSocket override:
+
+```
 VITE_WS_URL=ws://127.0.0.1:8000/ws npm run dev
 ```
 
 ---
 
-## Dev Simulation (Hidden / Internal)
+# Dev Simulation
 
-For automated testing runs (no UI):
+For automated game simulations without the UI:
 
-```bash
+```
 python -m backend.dev_simulation --players 4 --games 3 --deck-count 1
 ```
 
-For dev-only WebSocket automation:
+For development-only WebSocket automation:
 
-```bash
+```
 BLUFFER_DEV_MODE=1 uvicorn backend.main:app --reload --port 8000
 ```
 
 ---
 
-## Project Structure
+# Project Structure
 
-```text
+```
 backend/
-  main.py           # FastAPI app + WebSocket handler
-  rooms.py          # Room lifecycle, deck build, dealing
-  game_engine.py    # Core game rules and state machine
+  main.py           FastAPI app + WebSocket handler
+  rooms.py          Room lifecycle, deck creation, dealing logic
+  game_engine.py    Core game rules and state machine
 
 frontend/
-  src/App.tsx       # Top-level UI and WebSocket integration
-  src/screens/Lobby.tsx
-  src/screens/Game.tsx
-  src/types/messages.ts
-  public/cards/     # SVG card assets
+  src/
+    App.tsx
+    screens/
+      Lobby.tsx
+      Game.tsx
+    types/messages.ts
+  public/cards/     SVG card assets
 
 docs/
-  *.md              # Project documentation
+  API.md
+  ARCHITECTURE.md
+  GAMEPLAY.md
+  UML.md
+  WIREFRAME.md
 ```
 
 ---
 
-## Notes
+# Documentation
 
-- The UI and balancing values (card overlap, spacing, animations) are still being tuned.
-- API is currently unauthenticated and room memory is in-process (no database).
-- Designed as a real-time multiplayer experiment using WebSockets.
+docs/GAMEPLAY.md  
+Full game rules and gameplay flow
+
+docs/API.md  
+HTTP + WebSocket message schema documentation
+
+docs/ARCHITECTURE.md  
+System design and internal structure
+
+docs/UML.md  
+UML diagrams (WIP)
+
+docs/WIREFRAME.md  
+UI layout references (WIP)
 
 ---
 
-## Current Bugs and Limitations
+# Current Bugs and Limitations
 
-- When a bluff call is wrong and the caller should pick up the whole pile, the message still reads like a single card was picked.
-- Rooms are in-memory only (no persistence) and the API is unauthenticated.
-- The game state is not persistant on cloud. Refresh or restart will loose all game progress.
-- UI/animation tuning is ongoing and may change (dial behavior, spacing, animation timing).
+- When a bluff call fails and the caller should pick up the entire pile, the UI message still reads as if only a single card was picked.
+- Rooms exist **only in memory** (no persistence).
+- Refreshing or restarting the server resets game state.
+- API is currently **unauthenticated**.
+- Some UI animations and spacing are still being tuned.
 
 ---
 
-## TODO
+# Roadmap
 
-- Setup and Add tests and code analysis in workflows and actions
-- Need to add How to Play page on landing site
-- Add a mute button to mute all audio
-- Right now, the game sounds are placeholders and not the final ones, will have to replace.
-- Add chat functionality (or even voice chat - might be a bit too much)
-- Improve the UI for bluff call card selection, currently uses the old prototype layout
-- There are still some paceholder dev UI components and messagess remaining, will integrate them better, or remove them entirely.
-- Game might not be fully optimized, so need working on that
+Planned improvements:
 
-- ~~Implemented the premium claim-rank dial (snap, depth curve, and input handling).~~
-- ~~Refined the game HUD styling (fullscreen table, glass hand panel, action buttons, turn indicators, spacing).~~
-- ~~Updated Joker SVGs (JOKER corners, gold finish, glow, removed bottom text).~~
-- ~~Simplified connection status UI + repositioned the info icon.~~
-- ~~Global CSS cleanup for a full-screen “canvas” feel (no scrollbars, unified background depth).~~
+- Automated tests and CI workflows
+- Persistent game state
+- Authentication
+- Improved bluff-call card selection UI
+- Replace placeholder audio
+- Add mute toggle
+- Add chat functionality
+- UI polish and animation improvements
+
+Completed improvements:
+
+- Claim-rank dial with snapping and depth curve
+- Refined HUD styling
+- Updated Joker SVG assets
+- Simplified connection status UI
+- Global CSS cleanup for fullscreen layout
+
+---
+
+# Contributing
+
+Contributions, bug reports, and feature suggestions are welcome.
+
+If you notice a bug or have an idea for improvement, feel free to open an issue or submit a pull request.
+
+---
+
+# License
+
+MIT License
