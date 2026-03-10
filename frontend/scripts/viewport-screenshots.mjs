@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 
 import { chromium } from "@playwright/test";
 
@@ -23,7 +25,7 @@ for (let i = 0; i < args.length; i += 1) {
 
 const baseUrl = argMap.get("base") || process.env.BASE_URL || "http://localhost:5173";
 const outputDir = argMap.get("out") || "screenshots";
-const routes = (argMap.get("routes") || "/,/lobby")
+const routes = (argMap.get("routes") || "/,/lobby,/game?screenshot=1")
   .split(",")
   .map((route) => route.trim())
   .filter(Boolean)
@@ -50,6 +52,73 @@ const viewports = [
   { name: "monitor-40-4k", width: 3840, height: 2160 },
 ];
 
+const parseSelectionTokens = (raw) =>
+  raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+const selectViewportsFromTokens = (tokens) => {
+  const selected = [];
+  const seen = new Set();
+
+  for (const token of tokens) {
+    let viewport;
+    if (/^\d+$/.test(token)) {
+      const index = Number(token) - 1;
+      viewport = viewports[index];
+    } else {
+      viewport = viewports.find((entry) => entry.name.toLowerCase() === token.toLowerCase());
+    }
+    if (!viewport || seen.has(viewport.name)) {
+      continue;
+    }
+    seen.add(viewport.name);
+    selected.push(viewport);
+  }
+
+  return selected;
+};
+
+const pickViewports = async () => {
+  const deviceArg = argMap.get("devices") || argMap.get("device");
+  if (deviceArg) {
+    const selected = selectViewportsFromTokens(parseSelectionTokens(deviceArg));
+    if (selected.length > 0) {
+      return selected;
+    }
+    process.stderr.write(`No matching devices found for "${deviceArg}", defaulting to all devices.\n`);
+    return viewports;
+  }
+
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    return viewports;
+  }
+
+  process.stdout.write("Available devices:\n");
+  for (const [index, viewport] of viewports.entries()) {
+    process.stdout.write(`${index + 1}. ${viewport.name} (${viewport.width}x${viewport.height})\n`);
+  }
+  process.stdout.write("\n");
+
+  const rl = readline.createInterface({ input, output });
+  const answer = await rl.question("Select device number(s) (comma-separated), or press Enter for all: ");
+  rl.close();
+
+  const selectedTokens = parseSelectionTokens(answer);
+
+  if (selectedTokens.length === 0) {
+    return viewports;
+  }
+
+  const selected = selectViewportsFromTokens(selectedTokens);
+  if (selected.length === 0) {
+    process.stderr.write("No valid device numbers selected, defaulting to all devices.\n");
+    return viewports;
+  }
+  return selected;
+};
+
 const slugify = (value) =>
   value
     .replace(/^\//, "")
@@ -59,6 +128,7 @@ const slugify = (value) =>
 
 const run = async () => {
   await fs.mkdir(outputDir, { recursive: true });
+  const selectedViewports = await pickViewports();
 
   const browser = await chromium.launch();
   const context = await browser.newContext();
@@ -80,7 +150,7 @@ const run = async () => {
     });
   }
 
-  for (const viewport of viewports) {
+  for (const viewport of selectedViewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     for (const route of routes) {

@@ -7,7 +7,7 @@ import GamePage from "./pages/Game";
 import LobbyPage from "./pages/Lobby";
 import WorkInProgress from "./pages/WorkInProgress";
 import { WebSocketClient, type ConnectionStatus } from "./lib/ws";
-import type { PrivateState, PublicState, ServerMessage } from "./types/messages";
+import type { ClientMessage, PrivateState, PublicState, ServerMessage } from "./types/messages";
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
 //Insert own IP addr. for local hosted within the same wifi addr.
@@ -15,11 +15,74 @@ const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
 
 type ChallengeResolvedMessage = Extract<ServerMessage, { type: "challenge_resolved" }>;
 
+const SCREENSHOT_PLAYER_ID = "player-1";
+const SCREENSHOT_PUBLIC_STATE: PublicState = {
+  room_code: "DEMO",
+  phase: "CLAIM_MADE",
+  host_id: "player-1",
+  deck_count: 1,
+  direction: "CLOCKWISE",
+  players: [
+    { player_id: "player-1", display_name: "Player One", hand_count: 27 },
+    { player_id: "player-2", display_name: "Nendnd", hand_count: 27 },
+    { player_id: "player-3", display_name: "Maya", hand_count: 26 },
+    { player_id: "player-4", display_name: "Ravi", hand_count: 28 },
+  ],
+  current_player_id: "player-1",
+  last_claim: { player_id: "player-2", rank: "5", count: 3 },
+  round_rank: "5",
+  round_starter_id: "player-2",
+  last_play_count: 3,
+  pile_count: 12,
+  discard_pile_count: 24,
+  finished_order: [],
+  loser_id: null,
+  standings: [],
+};
+const SCREENSHOT_PRIVATE_STATE: PrivateState = {
+  room_code: "DEMO",
+  player_id: "player-1",
+  hand: [
+    "AS",
+    "AD",
+    "AH",
+    "AC",
+    "2S",
+    "2D",
+    "2H",
+    "2C",
+    "3S",
+    "3D",
+    "3H",
+    "3C",
+    "4S",
+    "4D",
+    "4H",
+    "4C",
+    "5S",
+    "5D",
+    "5H",
+    "5C",
+    "6S",
+    "6D",
+    "6H",
+    "6C",
+    "7S",
+    "7D",
+    "JKR",
+  ],
+};
+
 export default function App() {
   const client = useMemo(() => new WebSocketClient(), []);
   const navigate = useNavigate();
   const location = useLocation();
   const isGameRoute = location.pathname === "/game";
+  const isScreenshotMode = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.has("screenshot") || params.has("demo");
+  }, [location.search]);
+  const isScreenshotGame = isGameRoute && isScreenshotMode;
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [playerId, setPlayerId] = useState("player-1");
   const [displayName, setDisplayName] = useState("Player One");
@@ -34,6 +97,10 @@ export default function App() {
   const challengeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (isScreenshotMode) {
+      setStatus("connected");
+      return;
+    }
     client.connect(WS_URL);
     const unsubscribeStatus = client.onStatus(setStatus);
     const unsubscribeMessages = client.onMessage((message: ServerMessage) => {
@@ -73,7 +140,7 @@ export default function App() {
       unsubscribeMessages();
       client.close();
     };
-  }, [client, navigate, playerId]);
+  }, [client, navigate, playerId, isScreenshotMode]);
 
   useEffect(() => {
     if (publicState && publicState.phase !== "WAITING_FOR_PLAYERS" && location.pathname !== "/game") {
@@ -110,7 +177,17 @@ export default function App() {
     };
   }, [lastEvent]);
 
-  const activeRoomCode = publicState?.room_code ?? roomCode;
+  const effectivePublicState = isScreenshotGame ? SCREENSHOT_PUBLIC_STATE : publicState;
+  const effectivePrivateState = isScreenshotGame ? SCREENSHOT_PRIVATE_STATE : privateState;
+  const activeRoomCode = effectivePublicState?.room_code ?? roomCode;
+  const effectivePlayerId = isScreenshotGame ? SCREENSHOT_PLAYER_ID : playerId;
+  const effectiveStatus = isScreenshotGame ? "connected" : status;
+  const effectiveOnSend = useMemo<(message: ClientMessage) => void>(() => {
+    if (isScreenshotGame) {
+      return () => {};
+    }
+    return (message: ClientMessage) => client.send(message);
+  }, [client, isScreenshotGame]);
 
   const shell = (child: ReactNode) => (
     <>
@@ -134,56 +211,61 @@ export default function App() {
   );
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Landing />} />
-        <Route path="/how" element={<WorkInProgress />} />
-        <Route path="/privacy" element={<WorkInProgress />} />
-        <Route path="/credits" element={<WorkInProgress />} />
-        <Route
-          path="/lobby"
-          element={shell(
-            <LobbyPage
-              playerId={playerId}
-              displayName={displayName}
-              roomCode={roomCode}
-              deckCount={deckCount}
-              direction={direction}
-              publicState={publicState}
-              status={status}
-              onRetryConnection={() => {
-                setLastError(null);
-                client.connect(WS_URL);
-              }}
-              onChangePlayerId={setPlayerId}
-              onChangeDisplayName={setDisplayName}
-              onChangeRoomCode={setRoomCode}
-              onChangeDeckCount={setDeckCount}
-              onChangeDirection={setDirection}
-              onSend={(message) => client.send(message)}
-            />
-          )}
-        />
-        <Route
-          path="/game"
-          element={shell(
-            <GamePage
-              playerId={playerId}
-              roomCode={activeRoomCode}
-              publicState={publicState}
-              privateState={privateState}
-              lastChallenge={lastChallenge}
-              status={status}
-              onRetryConnection={() => {
-                setLastError(null);
-                client.connect(WS_URL);
-              }}
-              onSend={(message) => client.send(message)}
-            />
-          )}
-        />
-        <Route path="*" element={<Landing />} />
-      </Routes>
-    </AnimatePresence>
+    <>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Landing />} />
+          <Route path="/how" element={<WorkInProgress />} />
+          <Route path="/privacy" element={<WorkInProgress />} />
+          <Route path="/credits" element={<WorkInProgress />} />
+          <Route
+            path="/lobby"
+            element={shell(
+              <LobbyPage
+                playerId={playerId}
+                displayName={displayName}
+                roomCode={roomCode}
+                deckCount={deckCount}
+                direction={direction}
+                publicState={publicState}
+                status={status}
+                onRetryConnection={() => {
+                  setLastError(null);
+                  client.connect(WS_URL);
+                }}
+                onChangePlayerId={setPlayerId}
+                onChangeDisplayName={setDisplayName}
+                onChangeRoomCode={setRoomCode}
+                onChangeDeckCount={setDeckCount}
+                onChangeDirection={setDirection}
+                onSend={(message) => client.send(message)}
+              />
+            )}
+          />
+          <Route
+            path="/game"
+            element={shell(
+              <GamePage
+                playerId={effectivePlayerId}
+                roomCode={activeRoomCode}
+                publicState={effectivePublicState}
+                privateState={effectivePrivateState}
+                lastChallenge={lastChallenge}
+                status={effectiveStatus}
+                onRetryConnection={() => {
+                  setLastError(null);
+                  client.connect(WS_URL);
+                }}
+                onSend={effectiveOnSend}
+              />
+            )}
+          />
+          <Route path="*" element={<Landing />} />
+        </Routes>
+      </AnimatePresence>
+      <p className="global-wip-notice" role="note">
+        Work in progress: this game may contain bugs.
+      </p>
+    </>
   );
 }
