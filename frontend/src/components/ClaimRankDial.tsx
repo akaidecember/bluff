@@ -189,7 +189,6 @@ export default function ClaimRankDial({
     if (liveIdx !== activeIndex) {
       isUserScrollingRef.current = true;
       setActiveIndex(liveIdx);
-      onChange(ranks[liveIdx]);
     }
     if (scrollEndTimer.current) {
       window.clearTimeout(scrollEndTimer.current);
@@ -229,28 +228,40 @@ export default function ClaimRankDial({
     }
 
     event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) {
+      return;
+    }
+    if (scrollEndTimer.current) {
+      window.clearTimeout(scrollEndTimer.current);
+      scrollEndTimer.current = null;
+    }
     isUserScrollingRef.current = false;
+    const current = activeIndex;
 
     if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      const next = Math.max(0, activeIndex - 1);
+      const next = Math.max(0, current - 1);
       setActiveIndex(next);
       onChange(ranks[next]);
-      scrollToIndex(next, { smooth: true });
+      scrollToIndex(next, { smooth: false });
       applyDepth(next);
       return;
     }
 
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      const next = Math.min(ranks.length - 1, activeIndex + 1);
+      const next = Math.min(ranks.length - 1, current + 1);
       setActiveIndex(next);
       onChange(ranks[next]);
-      scrollToIndex(next, { smooth: true });
+      scrollToIndex(next, { smooth: false });
       applyDepth(next);
       return;
     }
 
-    scrollToIndex(activeIndex, { smooth: true });
+    scrollToIndex(current, { smooth: false });
   };
+
+  const atStart = activeIndex <= 0;
+  const atEnd = activeIndex >= ranks.length - 1;
 
   return (
     <div className={`dial-root ${orientation}${disabled ? " is-disabled" : ""}`.trim()}>
@@ -260,6 +271,22 @@ export default function ClaimRankDial({
       </div>
 
       <div className="dial-wrap">
+        <span
+          className={`dial-arrow dial-arrow-prev${atStart ? " is-end" : ""}`}
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 16 14" focusable="false" aria-hidden="true">
+            <path d="M2 7 L14 2 L14 12 Z" />
+          </svg>
+        </span>
+        <span
+          className={`dial-arrow dial-arrow-next${atEnd ? " is-end" : ""}`}
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 16 14" focusable="false" aria-hidden="true">
+            <path d="M2 7 L14 2 L14 12 Z" />
+          </svg>
+        </span>
         <div className="dial-center-marker" aria-hidden="true" />
         <div
           ref={scrollerRef}
@@ -296,33 +323,15 @@ export default function ClaimRankDial({
               return;
             }
 
+            // Normalize trackpad and mouse-wheel input into one horizontal delta
+            // so both devices feel consistent and don't fight page scrolling.
+            event.preventDefault();
             const absX = Math.abs(dx);
             const absY = Math.abs(dy);
-            const looksLikeMouseWheel = deltaMode === 1 || deltaMode === 2 || (absX === 0 && absY >= 12);
-            const looksLikeTrackpad = !looksLikeMouseWheel;
-
-            if (looksLikeTrackpad) {
-              if (absX < 3) {
-                const scrollingElement = document.scrollingElement;
-                const canScrollPage = scrollingElement
-                  ? scrollingElement.scrollHeight > scrollingElement.clientHeight
-                  : false;
-                if (!canScrollPage) {
-                  event.preventDefault();
-                }
-                return;
-              }
-              event.preventDefault();
-              const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-              const next = scroller.scrollLeft + dx;
-              scroller.scrollLeft = Math.min(Math.max(0, next), maxScroll);
-            } else {
-              event.preventDefault();
-              const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-              const delta = absY >= absX ? dy : dx;
-              const next = scroller.scrollLeft + delta;
-              scroller.scrollLeft = Math.min(Math.max(0, next), maxScroll);
-            }
+            const delta = absX >= absY ? dx : dy;
+            const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+            const next = scroller.scrollLeft + delta;
+            scroller.scrollLeft = Math.min(Math.max(0, next), maxScroll);
 
           }}
           onMouseDown={() => scrollerRef.current?.focus()}
