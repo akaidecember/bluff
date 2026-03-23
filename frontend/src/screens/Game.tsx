@@ -72,6 +72,8 @@ type ResponsiveLayout = {
   tableBottomPadding: number;
 };
 
+type LayoutMode = "regular" | "compact" | "phone-portrait";
+
 const PLAY_ANIMATION_MS = 520;
 const PLAY_ANIMATION_STAGGER_MS = 70;
 
@@ -79,33 +81,54 @@ function computeResponsiveLayout(rawWidth: number, rawHeight: number): Responsiv
   const stageWidth = Math.max(320, rawWidth);
   const fallbackHeight = typeof window !== "undefined" ? window.innerHeight : 720;
   const stageHeight = Math.max(520, rawHeight || fallbackHeight || 720);
-  const isPortrait = stageHeight > stageWidth;
+  const isPortraitStage = stageHeight > stageWidth;
+  const isPhonePortrait = stageHeight > stageWidth && stageWidth < 768;
   const heightScale = Math.min(1, Math.max(0.78, stageHeight / 820));
-  const baseMyCardWidth = isPortrait
-    ? Math.min(74, Math.max(48, stageWidth * 0.125))
+  const baseMyCardWidth = isPortraitStage
+    ? Math.min(
+        isPhonePortrait ? 95 : 94,
+        Math.max(isPhonePortrait ? 58 : 56, stageWidth * (isPhonePortrait ? 0.2 : 0.086))
+      )
     : Math.min(80, Math.max(44, stageWidth * 0.06));
-  const myCardWidth = Math.round(44 + (baseMyCardWidth - 44) * heightScale);
+  const myCardWidth = Math.round((isPhonePortrait ? 52 : 44) + (baseMyCardWidth - (isPhonePortrait ? 52 : 44)) * heightScale);
   const myCardOverlap = -Math.round(
-    Math.min(isPortrait ? 22 : 56, Math.max(isPortrait ? 8 : 24, myCardWidth * (isPortrait ? 0.3 : 0.6)))
+    Math.min(
+      isPortraitStage ? (isPhonePortrait ? 18 : 34) : 56,
+      Math.max(
+        isPortraitStage ? (isPhonePortrait ? 10 : 14) : 24,
+        myCardWidth * (isPortraitStage ? (isPhonePortrait ? 0.24 : 0.38) : 0.6)
+      )
+    )
   );
-  const baseSeatCardWidth = isPortrait
-    ? Math.min(44, Math.max(24, stageWidth * 0.05))
+  const baseSeatCardWidth = isPhonePortrait
+    ? Math.min(34, Math.max(22, stageWidth * 0.04))
     : Math.min(54, Math.max(30, stageWidth * 0.043));
   const seatCardWidth = Math.round(30 + (baseSeatCardWidth - 30) * heightScale);
   const seatFanStep = Math.round(Math.min(15, Math.max(8, seatCardWidth * 0.28)));
-  const seatFanWidth = Math.round(Math.min(isPortrait ? 162 : 220, Math.max(110, seatCardWidth * 3.8)));
-  const seatFanHeight = Math.round(Math.min(isPortrait ? 86 : 108, Math.max(52, seatCardWidth * 1.7)));
-  const tableHandWidth = Math.round(Math.min(1120, Math.max(320, stageWidth * (isPortrait ? 0.97 : 0.92))));
-  const baseHandSlab = isPortrait
-    ? Math.min(260, Math.max(184, stageHeight * 0.27))
+  const seatFanWidth = Math.round(Math.min(isPhonePortrait ? 162 : 220, Math.max(110, seatCardWidth * 3.8)));
+  const seatFanHeight = Math.round(Math.min(isPhonePortrait ? 86 : 108, Math.max(52, seatCardWidth * 1.7)));
+  const tableHandWidth = Math.round(
+    Math.min(1120, Math.max(320, stageWidth * (isPortraitStage ? 0.97 : 0.92)))
+  );
+  const baseHandSlab = isPortraitStage
+    ? Math.min(isPhonePortrait ? 420 : 336, Math.max(isPhonePortrait ? 280 : 248, stageHeight * (isPhonePortrait ? 0.44 : 0.31)))
     : Math.min(276, Math.max(210, stageWidth * 0.215));
   const handSlabHeight = Math.round(
-    Math.min(baseHandSlab, Math.max(isPortrait ? 172 : 190, Math.min(baseHandSlab * heightScale, stageHeight * 0.36)))
+    Math.min(
+      baseHandSlab,
+      Math.max(
+        isPortraitStage ? (isPhonePortrait ? 260 : 220) : 190,
+        Math.min(baseHandSlab * heightScale, stageHeight * (isPortraitStage ? (isPhonePortrait ? 0.45 : 0.39) : 0.36))
+      )
+    )
   );
   const cardsViewportHeight = Math.round(
-    Math.max(isPortrait ? 84 : 100, handSlabHeight - Math.round((isPortrait ? 62 : 70) * heightScale))
+    Math.max(
+      isPortraitStage ? (isPhonePortrait ? 170 : 122) : 100,
+      handSlabHeight - Math.round((isPortraitStage ? (isPhonePortrait ? 96 : 78) : 70) * heightScale)
+    )
   );
-  const tableBottomPadding = handSlabHeight + Math.round((isPortrait ? 8 : 16) * heightScale);
+  const tableBottomPadding = handSlabHeight + Math.round((isPortraitStage ? (isPhonePortrait ? 6 : 10) : 16) * heightScale);
 
   return {
     stageWidth,
@@ -296,6 +319,17 @@ function getOpponentSeats(
     });
 }
 
+function getLayoutMode(stageWidth: number, stageHeight: number): LayoutMode {
+  const isPhonePortrait = stageHeight > stageWidth && stageWidth < 768;
+  if (isPhonePortrait) {
+    return "phone-portrait";
+  }
+  if (stageWidth < 1180 || stageHeight < 760) {
+    return "compact";
+  }
+  return "regular";
+}
+
 export default function Game({
   playerId,
   roomCode,
@@ -360,7 +394,9 @@ export default function Game({
   const phase = publicState?.phase ?? "UNKNOWN";
   const isMyTurn = publicState?.current_player_id === playerId;
   const hand = privateState?.hand ?? [];
-  const isPortraitViewport = responsiveLayout.stageHeight > responsiveLayout.stageWidth;
+  const isPortraitStage = responsiveLayout.stageHeight > responsiveLayout.stageWidth;
+  const layoutMode = getLayoutMode(responsiveLayout.stageWidth, responsiveLayout.stageHeight);
+  const isPhonePortraitViewport = layoutMode === "phone-portrait";
 
   const ownedRankCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -420,9 +456,15 @@ export default function Game({
         playerId,
         publicState?.current_player_id ?? null,
         publicState?.finished_order ?? [],
-        isPortraitViewport
+        isPhonePortraitViewport
       ),
-    [isPortraitViewport, publicState?.players, publicState?.current_player_id, publicState?.finished_order, playerId]
+    [
+      isPhonePortraitViewport,
+      publicState?.players,
+      publicState?.current_player_id,
+      publicState?.finished_order,
+      playerId,
+    ]
   );
 
   const maxCardsPerRow = useMemo(() => {
@@ -434,13 +476,13 @@ export default function Game({
       responsiveLayout.myCardWidth - Math.abs(responsiveLayout.myCardOverlap),
       14
     );
-    const widthSafety = isPortraitViewport ? 0.84 : 1;
+    const widthSafety = isPortraitStage ? 1 : 1;
     const fallbackWidth = Math.max(
-      responsiveLayout.stageWidth * 0.76,
+      responsiveLayout.stageWidth * (isPortraitStage ? 0.94 : 0.76),
       responsiveLayout.myCardWidth
     );
     const availableWidth = Math.max((handCenterWidth ?? fallbackWidth) * widthSafety, responsiveLayout.myCardWidth);
-    const minCardsThatMustFit = isPortraitViewport ? 4 : 6;
+    const minCardsThatMustFit = isPortraitStage ? 4 : 6;
     const fittedByWidth = Math.max(
       minCardsThatMustFit,
       Math.floor((availableWidth - responsiveLayout.myCardWidth) / effectiveStep) + 1
@@ -462,7 +504,7 @@ export default function Game({
   }, [
     hand.length,
     handCenterWidth,
-    isPortraitViewport,
+    isPortraitStage,
     responsiveLayout.myCardOverlap,
     responsiveLayout.myCardWidth,
     responsiveLayout.stageWidth,
@@ -475,6 +517,41 @@ export default function Game({
     }
     return rows;
   }, [hand, maxCardsPerRow]);
+
+  const mobileFanCards = useMemo(() => {
+    if (!isPhonePortraitViewport || hand.length === 0) {
+      return [];
+    }
+
+    const availableWidth = Math.max(
+      responsiveLayout.myCardWidth,
+      Math.min((handCenterWidth ?? responsiveLayout.tableHandWidth) - responsiveLayout.myCardWidth, responsiveLayout.stageWidth - 60)
+    );
+    const maxStep = hand.length > 1 ? availableWidth / (hand.length - 1) : 0;
+    const step = Math.max(9, Math.min(14, maxStep));
+    const spread = Math.max(18, Math.min(32, hand.length * 1.55));
+
+    return hand.map((card, index) => {
+      const centeredIndex = index - (hand.length - 1) / 2;
+      const angle = hand.length === 1 ? 0 : centeredIndex * (spread / Math.max(hand.length - 1, 1));
+      return {
+        card,
+        index,
+        style: {
+          "--fan-x": `${Math.round(centeredIndex * step)}px`,
+          "--fan-rotation": `${angle.toFixed(2)}deg`,
+          zIndex: index + 1,
+        } as CSSProperties,
+      };
+    });
+  }, [
+    hand,
+    handCenterWidth,
+    isPhonePortraitViewport,
+    responsiveLayout.myCardWidth,
+    responsiveLayout.stageWidth,
+    responsiveLayout.tableHandWidth,
+  ]);
 
   const handRowCount = Math.max(1, handRows.length);
   const estimatedCardHeight = Math.round(responsiveLayout.myCardWidth * 1.45);
@@ -534,10 +611,10 @@ export default function Game({
   }, [canCallBluff]);
 
   useEffect(() => {
-    if (!isPortraitViewport) {
+    if (layoutMode !== "phone-portrait") {
       setHudMenuOpen(false);
     }
-  }, [isPortraitViewport]);
+  }, [layoutMode]);
 
   useEffect(() => {
     if (!isHudMenuOpen) {
@@ -851,6 +928,15 @@ export default function Game({
     return `${name} claimed: ${lastClaim.count} ${claimLabel}`;
   }, [playerNameById, publicState?.last_claim]);
 
+  const lastOpponentClaimCompactText = useMemo(() => {
+    const lastClaim = publicState?.last_claim;
+    if (!lastClaim) {
+      return "Last: None";
+    }
+    const name = playerNameById[lastClaim.player_id] ?? lastClaim.player_id;
+    return `Last: ${name} -> ${lastClaim.count}x${lastClaim.rank}`;
+  }, [playerNameById, publicState?.last_claim]);
+
   const roundStarterName = useMemo(() => {
     if (!publicState?.round_starter_id) {
       return null;
@@ -900,8 +986,33 @@ export default function Game({
   }, [bluffReveal, revealResult, playSound]);
 
   const tableStageStyle = useMemo(
-    () =>
-      ({
+    () => {
+      const isPortraitStage = responsiveLayout.stageHeight > responsiveLayout.stageWidth;
+      const ovalWidth = Math.round(
+        isPortraitStage
+          ? Math.min(
+              760,
+              Math.max(360, Math.min(responsiveLayout.stageWidth * 0.74, responsiveLayout.stageHeight * 0.58))
+            )
+          : Math.min(
+              1200,
+              Math.max(520, Math.min(responsiveLayout.stageWidth * 0.9, responsiveLayout.stageHeight * 1.78))
+            )
+      );
+      const ovalHeight = Math.round(
+        isPortraitStage
+          ? Math.min(
+              1180,
+              Math.max(560, Math.min(responsiveLayout.stageHeight * 0.82, ovalWidth * 1.72))
+            )
+          : ovalWidth * 0.58
+      );
+      const centerPileWidth = Math.round(
+        Math.min(148, Math.max(92, Math.min(responsiveLayout.stageWidth * 0.14, responsiveLayout.stageHeight * 0.18)))
+      );
+      const centerPileHeight = Math.round(centerPileWidth * 1.3846);
+
+      return ({
         "--my-card-width": `${responsiveLayout.myCardWidth}px`,
         "--seat-card-width": `${responsiveLayout.seatCardWidth}px`,
         "--seat-fan-width": `${responsiveLayout.seatFanWidth}px`,
@@ -914,7 +1025,12 @@ export default function Game({
         "--play-origin-y": `${Math.round(responsiveLayout.handSlabHeight * 0.45)}px`,
         "--play-flight-y": `${Math.round(Math.max(220, responsiveLayout.stageWidth * 0.2))}px`,
         "--play-duration": `${PLAY_ANIMATION_MS}ms`,
-      }) as CSSProperties,
+        "--table-oval-width": `${ovalWidth}px`,
+        "--table-oval-height": `${ovalHeight}px`,
+        "--center-pile-width": `${centerPileWidth}px`,
+        "--center-pile-height": `${centerPileHeight}px`,
+      }) as CSSProperties;
+    },
     [
       controlsScale,
       responsiveLayout.cardsViewportHeight,
@@ -923,6 +1039,7 @@ export default function Game({
       responsiveLayout.seatCardWidth,
       responsiveLayout.seatFanHeight,
       responsiveLayout.seatFanWidth,
+      responsiveLayout.stageHeight,
       responsiveLayout.stageWidth,
       responsiveLayout.tableBottomPadding,
       responsiveLayout.tableHandWidth,
@@ -975,7 +1092,9 @@ export default function Game({
   }
 
   return (
-    <main className={`screen game-table-screen${isMyTurn ? " my-turn" : ""}${isPortraitViewport ? " portrait-layout" : ""}`}>
+    <main
+      className={`screen game-table-screen layout-${layoutMode}${isMyTurn ? " my-turn" : ""}`}
+    >
       <section
         ref={tableStageRef}
         className={`panel table-stage-panel${isBluffModalOpen ? " table-blur" : ""}${isBluffPicking ? " table-bluff-picking" : ""}`}
@@ -1015,14 +1134,14 @@ export default function Game({
               status={status}
               onRetry={onRetryConnection}
               className="hud-connection"
-              showLabel={!isPortraitViewport}
+              showLabel={!isPhonePortraitViewport}
             />
           </div>
           <div
             className={`last-claim-chip${publicState?.last_claim ? " has-claim" : ""}${canCallBluff ? " call-ready" : ""}`}
           >
-            <span>Last Claim</span>
-            <strong>{lastOpponentClaimText}</strong>
+            <span>{isPhonePortraitViewport ? "Last" : "Last Claim"}</span>
+            <strong>{isPhonePortraitViewport ? lastOpponentClaimCompactText : lastOpponentClaimText}</strong>
           </div>
         </div>
         <div className={`turn-spotlight turn-spotlight-floating${isMyTurn ? " yours" : ""}`}>
@@ -1074,23 +1193,37 @@ export default function Game({
                   <h3>{seat.display_name}</h3>
                   <p className={`card-count${seat.isCurrent ? " current" : ""}`}>{seat.hand_count} cards</p>
                 </div>
-                <div className="seat-fan" style={{ transform: `rotate(${seat.angle - 90}deg)` }}>
-                  {Array.from({ length: visibleCards }, (_, index) => {
-                    const centered = index - (visibleCards - 1) / 2;
-                    return (
+                {isPhonePortraitViewport ? (
+                  <div className="opponent-stack" aria-hidden="true">
+                    {Array.from({ length: Math.min(visibleCards, 2) }, (_, index) => (
                       <img
-                        key={`${seat.player_id}-${index}`}
+                        key={`${seat.player_id}-stack-${index}`}
                         src="/cards/BACK.svg"
-                        alt="Opponent card"
-                        className="seat-fan-card"
-                        style={{
-                          transform: `translateX(calc(${centered * responsiveLayout.seatFanStep}px - 50%)) rotate(${centered * spread}deg)`,
-                        }}
+                        alt=""
+                        className="opponent-stack-card"
                         draggable={false}
                       />
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="seat-fan" style={{ transform: `rotate(${seat.angle - 90}deg)` }}>
+                    {Array.from({ length: visibleCards }, (_, index) => {
+                      const centered = index - (visibleCards - 1) / 2;
+                      return (
+                        <img
+                          key={`${seat.player_id}-${index}`}
+                          src="/cards/BACK.svg"
+                          alt="Opponent card"
+                          className="seat-fan-card"
+                          style={{
+                            transform: `translateX(calc(${centered * responsiveLayout.seatFanStep}px - 50%)) rotate(${centered * spread}deg)`,
+                          }}
+                          draggable={false}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </article>
             );
           })}
@@ -1125,16 +1258,35 @@ export default function Game({
               <div className="table-my-hand">
             <div className="hand-hud">
               <div className="hand-left">
-                <ClaimRankDial
-                  value={effectiveClaimRank}
-                  onChange={setClaimRank}
-                  ranks={CLAIM_RANKS}
-                  ownedCounts={ownedRankCounts}
-                  label="I CLAIM..."
-                  helperText=""
-                  disabled={Boolean(activeRoundRank)}
-                  orientation={isPortraitViewport ? "vertical" : "horizontal"}
-                />
+                {isPhonePortraitViewport ? (
+                  <label className={`touch-claim-select${activeRoundRank ? " locked" : ""}`}>
+                    <span>I Claim</span>
+                    <select
+                      value={effectiveClaimRank}
+                      onChange={(event) => setClaimRank(event.target.value)}
+                      disabled={Boolean(activeRoundRank)}
+                      aria-label="Select claim rank"
+                    >
+                      {!activeRoundRank && <option value="">Choose rank</option>}
+                      {CLAIM_RANKS.map((rank) => (
+                        <option key={rank} value={rank}>
+                          {rank}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <ClaimRankDial
+                    value={effectiveClaimRank}
+                    onChange={setClaimRank}
+                    ranks={CLAIM_RANKS}
+                    ownedCounts={ownedRankCounts}
+                    label="I CLAIM..."
+                    helperText=""
+                    disabled={Boolean(activeRoundRank)}
+                    orientation="horizontal"
+                  />
+                )}
               </div>
 
               <div className="hand-center" ref={handCenterRef}>
@@ -1144,6 +1296,21 @@ export default function Game({
                 </div>
                 {hand.length === 0 ? (
                   <p className="muted">No cards left.</p>
+                ) : isPhonePortraitViewport ? (
+                  <div className="my-hand-fan" aria-label="Your hand">
+                    {mobileFanCards.map(({ card, index, style }) => (
+                      <PlayingCard
+                        key={`${card}-${index}`}
+                        code={card}
+                        selected={selectedIndices.includes(index)}
+                        disabled={!canPlay}
+                        className="my-hand-card mobile-fan-card"
+                        style={style}
+                        onClick={() => toggleSelect(index)}
+                        onMouseEnter={handleCardHover}
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <div className="my-hand-rows">
                     {handRows.map((row, rowNumber) => (
